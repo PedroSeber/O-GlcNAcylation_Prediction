@@ -3,4 +3,11 @@
 
 # Other files
 *.txt
+*.ods
+*.png
+Conflicts*.csv
+
+# Folders
+__pycache__/
+*_results*/
 
