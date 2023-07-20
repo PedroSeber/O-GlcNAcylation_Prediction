@@ -141,6 +141,9 @@ def preprocess_data(filename, window_size = 10):
             for site in temp_sites:
                 positive_sites.add( (data.iat[idx, 0], int(site[1:])) ) # site[1:] to not add the letter
         seq_data = []
+        seq_data_10 = []
+        seq_data_15 = []
+        seq_data_20 = []
         y_boolean = []
         already_included = set()
         conflict_seqs = set()
@@ -150,10 +153,12 @@ def preprocess_data(filename, window_size = 10):
             for letter_idx, letter in enumerate(data.iat[idx, 3]):
                 if letter in {'T', 'S'}: # All sites are S or T
                     sequence = get_nearby_AA(data.iat[idx, 3], letter_idx, window_size)
-                    positive_bool = (data.iat[idx, 0], letter_idx) in positive_sites
+                    positive_bool = (data.iat[idx, 0], letter_idx+1) in positive_sites
                     if (sequence, positive_bool) not in already_included and (sequence, not(positive_bool)) not in already_included: # Equivalent to just checking whether the sequence has been included
                         seq_data.append(sequence)
                         y_boolean.append(int(positive_bool)) # Ints allow one to easily obtain the sum and mean of the data
+                        if window_size == 5: # Other datasets for test-set leakage analysis
+                            pass
                         already_included.add((sequence, positive_bool))
                     elif (sequence, not(positive_bool)) in already_included: # Conflict: the sequence has already been included, but with the opposite glycosylation status
                         conflict_seqs.add( (sequence, int(not(positive_bool))) )
@@ -171,11 +176,12 @@ def preprocess_data(filename, window_size = 10):
         """follows_motif = np.zeros_like(y_boolean, dtype = bool)
         for idx, seq in enumerate(seq_data):
             if len(seq) < 6:
-                follows_motif[idx] = False
+                n_follow = 0
             elif seq[window_size] == 'S':
-                follows_motif[idx] = (seq[window_size-3]=='P') & (seq[window_size-2]=='P') & ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) & ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) & (seq[window_size+2]=='A')
+                n_follow = (seq[window_size-3]=='P') + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) + ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) + (seq[window_size+2]=='A')
             elif seq[window_size] == 'T':
-                follows_motif[idx] = ((seq[window_size-3]=='P')|(seq[window_size-3]=='T')) & (seq[window_size-2]=='P') & ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) & ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) & ((seq[window_size+2]=='A')|(seq[window_size+2]=='T'))
+                n_follow = ((seq[window_size-3]=='P')|(seq[window_size-3]=='T')) + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) + ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) + ((seq[window_size+2]=='A')|(seq[window_size+2]=='T'))
+            follows_motif[idx] = n_follow >= 4 # Change this threshold as needed
         y_boolean = pd.Series(y_boolean, dtype = bool) # Converting to bool to avoid weirdness with negation. Original is int for convenience
         motif_TP = (y_boolean&follows_motif).sum()
         motif_TN = (~y_boolean&~follows_motif).sum()
@@ -184,7 +190,7 @@ def preprocess_data(filename, window_size = 10):
         rec = motif_TP / (motif_TP + motif_FN)
         pre = motif_TP / (motif_TP + motif_FP)
         f1 = 2/(1/rec + 1/pre)
-        print(f'W-F Motif: Rec = {rec:.2f}, Pre = {pre:.2f}, F1 = {f1:.2f}' + ' '*10)"""
+        print(f'W-F et al. Motif: Rec = {rec*100:.2f}, Pre = {pre*100:.2f}, F1 = {f1*100:.2f}, TP = {motif_TP}, TP + FP (what is marked as positive) = {motif_TP + motif_FP}' + ' '*10)"""
         conflict_seqs = pd.DataFrame(tuple(conflict_seqs), columns = ['Conflicting sequence', 'O-Glyco status in the processed data']) # tuple() because Pandas doesn't convert sets to Series
         conflict_seqs.to_csv(f'Conflicts_data_v5_window-size_{window_size}.csv', index = False)
         print(f'Total sites: {len(seq_data):,}' + ' '*30)
@@ -225,7 +231,7 @@ if __name__ == '__main__':
     parser.add_argument('filename', type = str, nargs = 1,
         help = 'The name of the raw dataset. Must be "file_for_ML.csv", "file_for_ML_v2.csv", "all_sites_fixed.csv", "all_sites_PS.csv", "all_sites_PS_Uniprot.csv", or "OVSlab_allSpecies_O-GlcNAcome_PS.csv"')
     parser.add_argument('-ws', '--window_size', type = int, nargs = 1, metavar = 10, default = [10],
-        help = 'The size of each side of the window. The total window size is 2*window_size + 1')
+        help = 'The size of each side of the window. The total window size is 2*window_size + 1. Optional, default = 10.')
     args = parser.parse_args()
     preprocess_data(args.filename[0], args.window_size[0]) # [0] to convert from list to string
 
