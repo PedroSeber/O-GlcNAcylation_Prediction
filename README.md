@@ -1,11 +1,16 @@
-## Linear and Neural Network Models for Predicting N-glycosylation in Chinese Hamster Ovary Cells Based on B4GALT Levels
-These are the datasets and model files associated with the publication [Linear and Neural Network Models for Predicting N-glycosylation in Chinese Hamster Ovary Cells Based on B4GALT Levels](https://doi.org/10.1101/2023.04.13.536762). This work uses linear models and ANNs to predict the distribution of glycans on potential N-glycosylation sites. The models were trained on data containing normalized CHO cell B4GALT levels.<br>
+## Recurrent Neural Network-based Prediction of the Location of O-GlcNAcylation Sites in Mammalian Proteins
+These are the datasets and model files associated with the publication [Recurrent Neural Network-based Prediction of the Location of O-GlcNAcylation Sites in Mammalian Proteins]. This work uses primarily RNN models to predict the presence of O-GlcNAcylation sites.
+The models were trained on multiple sources of literature data on protein O-GlcNAcylation based on human-selected descriptors (v1 of the datasets) or protein sequences (v3 and v5 of the datasets).<br>
 
 ### Reproducing the models and plots
-Download the [datasets](datasets) folder and run the [SPA\_glycosylation\_model.py](SPA_glycosylation_model.py) file without any flags (`python SPA_glycosylation_model.py`) to recreate the cross-validation results, and run with the `--nested` flag (`python SPA_glycosylation_model.py --nested`) to recreate the nested validation results. To recreate the ANN results, download the [ANN\_train.ipynb](ANN_train.ipynb) file, change the first cell as needed, and run the notebook.<br>
-To recreate the plots, download the [result\_csv\_files](result_csv_files) and [result\_csv\_files\_nested](result_csv_files_nested) folders, then run the [make\_results\_plots.py](make_results_plots.py) file. Most plots will be generated in the first folder, but the nested validation PRE distribution will be generated in the nested results folder.
+The models can be recreated by downloading the datasets and opening the [ANN\_train.ipynb](ANN_train.ipynb) file and running the notebook.
+The first cell contains default values for the hyperparameters, which can be changed by the user.
+Alternatively, one can run the [ANN\_train.py](ANN_train.py) with the appropriate flags (run `python ANN_train.py --help` for details).
 
-### Using the models to predict glycan distributions
-The Conda environment defining the specific packages and version numbers used in this work is available as [ANN\_environment.yaml](ANN_environment.yaml). To use our trained models, run the [ANN\_predict.py](ANN_predict.py) file as `python ANN_predict.py <location> <B4GALT levels>`. For example, `python ANN_predict.py Asn_24 1 1 1 1` to predict the wild-type glycan distribution at Asn 24, or `python ANN_predict.py Asn_83 0.001 0.004 1.03 1.1` to predict the glycan distribution at Asn 83 of a double-knockout mutant.
+The plots can be recreated by running the [make\_plot.py](make_plot.py) file with the appropriate data version as an input (`python make_plot.py v1` for Fig. 1, `python make_plot.py v3` for Fig. 2, and `python make_plot.py v5` for Fig. 3).
 
-Alternatively, create an (N+1)x5 .csv with the first column as row names, the first row as column names, and levels of B4GALT1-B4GALT4 in the other columns and run the [ANN\_predict.py](ANN_predict.py) file as `python ANN_predict.py <location> <path/to/file.csv>`. The results will be saved as a new .csv file
+### Using the models to predict O-GlcNAcylation sites
+The Conda environment defining the specific packages and version numbers used in this work is available as [ANN\_environment.yaml](ANN_environment.yaml). To use our trained model, run the [Predict.py](Predict.py) file as `python Predict.py <sequence> -t <threshold> -bs <batch_size>`.
+
+Alternatively, create an (N+1)x1 .csv with the first row as a header (such as "Sequences") and all other N rows as the actual amino acid sequences, then run the [Predict.py](Predict.py) file as `python ANN_predict.py <path/to/file.csv> -t <threshold> -bs <batch_size>`.
+The results will be saved as a new .csv file.
