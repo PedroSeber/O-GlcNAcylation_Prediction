@@ -20,7 +20,7 @@ def main(data_version):
         v5 = Wulff-Fuentes et al.'s data filtered to contain only mammalian sequences with site information
     """
     fig, ax = plt.subplots(figsize = (16, 9), dpi = 500)
-    if data_version in {'v1', 'v2'}:
+    if data_version == 'v1':
         # Plotting - Prepublished models
         plt.plot([48.55, 31.27, 14.36, 3.82], [3.17, 5.05, 6.89, 8.68], '-+', label = 'YinOYang') # Labeled for use in the plot legend
         plt.plot(65.09, 3.90, 'o', label = 'O-GlcNAc-PRED-II')
@@ -34,7 +34,6 @@ def main(data_version):
         plt.plot(39.38, 0.78, '^')
         plt.plot(38.94, 0.85, '^')
 
-    if data_version == 'v1':
         # Plotting - Our MLP v1 data
         x_values = [79.25, 78.30,   75.47,   68.87,   58.49, 54.72,   52.83,  43.40, 42.45,  36.79,  33.96,  31.13,  27.36,  24.53,  23.58,  22.64, 22.64, 22.64, 22.64, 22.64, 22.64, 22.64, 22.64, 22.64, 21.70,  19.81,  18.87,   18.87, 16.04,     14.15] # Recall
         y_values = [01.88, 02.05,   02.24,   02.35,   02.36, 02.62,   03.03,  03.08, 03.91,  04.38,  05.57,  06.93,  09.27,  12.81,  18.25,  22.86, 24.64, 28.57, 30.00, 31.58, 32.88, 33.80, 34.29, 35.29, 35.94,  36.21,  41.67,   44.44, 44.74,     45.45] # Precision
@@ -47,80 +46,6 @@ def main(data_version):
 
         # No model / testing everything
         plt.plot(100, 1.33, 's', label = 'No model')
-
-    elif data_version == 'v2':
-        # Plotting - Our MLP v2 data
-        x_values = [73.68,  67.54,  57.89,  45.61,  38.60,  31.58,  21.93,  14.91, 14.91, 14.91,  14.91, 12.28, 12.28, 12.28, 12.28, 12.28,     12.28, 11.40, 11.40,  09.65, 09.65, 09.65, 09.65,    09.65,     08.77] # Recall
-        y_values = [01.59,  01.80,  02.07,  02.29,  03.02,  04.06,  05.49,  07.17, 13.18, 17.71,  20.73, 21.54, 29.79, 35.00, 36.84, 37.84,     38.89, 39.39, 40.62,  44.00, 47.83, 57.89, 73.33,    78.57,     83.33] # Precision
-        labels = ['1e-10', '1e-9', '1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3',    '',    '', '0.05', '0.1',    '',    '',    '',    '', '0.7-0.8',    '', '0.9', '0.95',    '',    '',    '', '0.9999', '0.99995']
-        #labels = ['1e-10', '1e-9', '1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.03', '0.05', '0.1', '0.2', '0.3', '0.35-0.45', '0.5-0.65', '0.7-0.8', '0.85', '0.9', '0.95', '0.97', '0.99', '0.999', '0.9999', '0.99995']
-        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our MLP')
-        for idx in range(len(labels)):
-            #my_label = ax.annotate(labels[idx], (x_values[idx]+X_annotation_space[idx], y_values[idx]+y_annotation_space[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'right', color = ANN_line[0].get_color())
-            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
-            my_label.set_bbox(bbox_dict)
-
-        # Plotting - Our RNN_76 (Full data)
-        x_values = [74.56,  64.04,  57.89,  47.37,  38.60,  28.95, 24.56,  19.30,  16.67,  14.91, 14.91, 14.91, 14.04, 14.04, 14.04, 14.04,     12.28, 12.28, 11.40, 11.40,  11.40,   10.53,    07.89]
-        y_values = [01.64,  01.78,  02.15,  02.54,  03.24,  04.02, 06.21,  09.87,  18.27,  24.29, 26.98, 32.08, 35.56, 42.11, 45.71, 47.06,     45.16, 56.00, 61.90, 65.00,  86.67,   92.31,    90.00]
-        labels = ['1e-10', '1e-9', '1e-8', '1e-7', '1e-6', '1e-5',    '', '1e-3', '0.01', '0.03',    '', '0.1', '0.2',    '',    '', '0.5', '0.6-0.7', '0.8', '0.9',    '', '0.99', '0.999', '0.9999']
-        #labels = ['1e-10', '1e-9', '1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.03', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6-0.7', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999']
-        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-76', color = '#A20698')
-        for idx in range(len(labels)):
-            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
-            my_label.set_bbox(bbox_dict)
-
-        # Plotting - Our RNN_152 (Full data)
-        x_values = [70.18,  61.40,  53.51,  42.11,  33.33,  30.70,  25.44,  21.93,  18.42, 18.42,  18.42, 15.79, 14.91, 14.04, 14.04, 14.04, 13.16, 13.16, 12.28,      11.40, 09.65, 08.77,     07.89]
-        y_values = [01.77,  01.96,  02.27,  02.58,  03.21,  04.99,  07.14,  11.06,  17.95, 24.14,  30.43, 30.51, 35.42, 40.00, 47.06, 48.48, 51.72, 55.56, 63.64,      65.00, 78.57, 83.33,     90.00]
-        labels = ['1e-10', '1e-9', '1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01',    '', '0.05', '0.1',    '', '0.3',    '', '0.5', '0.6', '0.7', '0.8', '0.9-0.95',    '',    '', '0.99995']
-        #labels = ['1e-10', '1e-9', '1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.03', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9-0.95', '0.99-0.999', '0.9999', '0.99995']
-        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-152', color = '#FFA800')
-        for idx in range(len(labels)):
-            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
-            my_label.set_bbox(bbox_dict)
-
-        # Plotting - Our RNN_228 (Full data)
-        x_values = [64.91,  53.51,  48.25,  42.11,  33.33, 29.82,  25.44,  22.81, 19.30,  17.54,  17.54, 15.79, 15.79, 15.79, 14.91, 14.04, 14.04, 13.16, 13.16, 11.40, 10.53,   10.53,   09.65,    07.02]
-        y_values = [01.99,  02.11,  02.56,  03.33,  04.25, 06.12,  09.32,  14.44, 20.37,  23.81,  26.67, 30.00, 36.73, 40.00, 44.74, 47.06, 53.33, 55.56, 57.69, 54.17, 57.14,   70.59,   78.57,    80.00]
-        labels = ['1e-10', '1e-9', '1e-8', '1e-7', '1e-6',    '', '1e-4', '1e-3',    '', '0.03', '0.05', '0.1',    '', '0.3', '0.4', '0.5', '0.6',    '', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999']
-        #labels = ['1e-10', '1e-9', '1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.03', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999']
-        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-228', color = '#00B207')
-        for idx in range(len(labels)):
-            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
-            my_label.set_bbox(bbox_dict)
-
-        # Plotting - Our RNN_76 (Sequence only, new)
-        x_values = [35.09, 34.21, 32.46, 31.58, 29.82,  28.95, 26.32, 24.56,  22.81,  22.81, 21.93,  21.05, 21.05, 21.05, 21.05, 21.05, 21.05,     21.05, 20.18, 20.18, 20.18, 20.18,  20.18, 19.30,   19.30,    16.67]
-        y_values = [03.30, 03.64, 04.02, 04.68, 05.35,  06.06, 06.70, 07.41,  08.72,  10.61, 12.25,  14.04, 17.39, 19.05, 20.00, 21.43, 22.22,     22.86, 23.00, 23.96, 24.21, 25.00,  27.06, 27.85,   29.73,    27.54]
-        labels = ['1e-14',    '',    '',    '',    '', '1e-9',    '',    '', '1e-6', '1e-5',    '', '1e-3',    '',    '',    '',    '',    '', '0.4-0.5', '0.6',    '',    '',    '', '0.95',    '', '0.999', '0.9995']
-        #labels = ['1e-14', '1e-13', '1e-12', '1e-11', '1e-10', '1e-9', '1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2', '0.3', '0.4-0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9995']
-        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-76 (Seq only)', color = '#FF0000')
-        for idx in range(len(labels)):
-            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
-            my_label.set_bbox(bbox_dict)
-
-        # Plotting - Our RNN_76 (Sequence only, old)
-        #x_values = [45.61,   45.61,   42.98,   38.60,   36.84,  35.09,  34.21,  30.70,  29.82,  28.95,  28.95,  28.07,  27.19,  27.19, 26.32, 25.44, 24.56, 24.56, 24.56, 24.56, 24.56, 24.56, 22.81,  22.81,  20.18,   16.67]
-        #y_values = [02.74,   03.15,   03.45,   03.68,   04.13,  04.57,  05.28,  05.74,  06.53,  07.55,  08.85,  10.60,  11.79,  13.72, 14.02, 14.15, 14.58, 14.97, 15.56, 16.09, 16.87, 17.83, 17.57,  18.31,  19.17,   18.81]
-        #labels = ['1e-14', '1e-13', '1e-12', '1e-11', '1e-10', '1e-9', '1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999']
-        #ANN_line = plt.plot(x_values, y_values, '--', label = 'Our RNN-76 (Seq only) OLD')
-        #for idx in range(len(labels)):
-        #    my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
-        #    my_label.set_bbox(bbox_dict)
-
-        # Plotting - Our RNN_152 (Sequence only)
-        x_values = [41.23,   36.84, 35.09,   32.46, 28.07,  27.19,  23.68, 21.93,  20.18, 20.18, 20.18, 20.18,  20.18,  19.30, 19.30, 19.30, 19.30, 19.30, 19.30, 19.30, 19.30,     18.42, 18.42, 18.42,  18.42,   15.76, 14.91]
-        y_values = [04.00,   04.27, 04.87,   05.60, 06.00,  07.16,  07.61, 08.42,  09.31, 11.22, 13.22, 15.44,  19.49,  21.15, 22.22, 23.66, 24.18, 24.44, 25.00, 26.19, 27.50,     27.27, 28.00, 31.34,  32.81,   36.00, 36.17]
-        labels = ['1e-14', '1e-13',    '', '1e-11',    '', '1e-9', '1e-8',    '', '1e-6',    '',    '',    '', '0.01', '0.03',    '',    '',    '',    '',    '',    '', '0.6', '0.7-0.8',    '',    '', '0.99', '0.999',    '']
-        #labels = ['1e-14', '1e-13', '1e-12', '1e-11', '1e-10', '1e-9', '1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.03', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7-0.8', '0.9', '0.95', '0.99', '0.999', '0.9995']
-        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-152 (Seq only)', color = '#2300FF')
-        for idx in range(len(labels)):
-            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
-            my_label.set_bbox(bbox_dict)
-
-        # No model / testing everything
-        plt.plot(100, 1.26, 's', label = 'No model')
 
     elif data_version == 'v3':
         # Plotting - YoY
@@ -157,18 +82,30 @@ def main(data_version):
 
     elif data_version == 'v5':
         # Plotting - Our RNN-75; window size = 10
-        x_values = [70.81, 69.32,  68.49, 67.50,  66.33, 65.51,  63.85, 61.86,  60.86, 60.20, 59.87, 59.87, 59.37, 59.37, 59.37, 58.87, 58.71, 58.21, 58.04,  57.71, 56.22,   56.05, 55.06, 54.56, 53.57, 52.74, 51.74]
-        y_values = [05.09, 05.41,  05.75, 06.12,  06.48, 06.80,  07.07, 07.21,  07.45, 07.58, 07.63, 07.72, 07.73, 07.81, 07.88, 07.88, 07.90, 07.89, 07.96,  08.00, 07.99,   08.25, 08.38, 08.64, 08.85, 09.10, 09.23]
-        labels = ['1e-10',    '', '1e-8',    '', '1e-6',    '', '1e-4',    '', '0.01',    '',    '', '0.2',    '',    '', '0.5',    '',    '', '0.8',    '', '0.95',    '', '0.999',    '',    '',    '',    '',   '1']
-        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-75', color = '#FF0000')
+        x_values = [61.51,  57.66,  53.33,  49.74,  46.74,  43.19,  39.60,  37.27, 36.01, 34.53, 33.72, 33.31, 32.72, 32.09, 31.24, 30.61, 29.53, 28.24, 25.98, 22.98, 20.21, 13.14]
+        y_values = [ 5.78,   6.53,   7.44,   8.55,  10.05,  11.85,  13.90,  15.62, 16.36, 17.06, 17.66, 18.21, 18.64, 18.99, 19.31, 19.90, 20.65, 21.37, 22.72, 24.27, 25.89, 29.93]
+        labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2',    '', '0.4',    '', '0.6',    '', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999', '1']
+        #labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999', '1']
+        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-75; 10 window')
         for idx in range(len(labels)):
             my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
             my_label.set_bbox(bbox_dict)
 
-        # Wulff-Fuentes et al. motif (page 3 of their paper) -- only 28 unique sites follow the motif; only 2 are O-GlcNAcylated
-        plt.plot(0.06, 7.14, 'o', label = r'Wulff-Fuentes $\it{et}$ $\it{al.}$ motif')
+        # Plotting - Our RNN-75; window size = 15
+        x_values = [57.63, 53.62, 50.72, 48.05, 45.19, 42.34, 39.95, 37.78, 36.84, 35.90, 35.25, 34.78, 34.13, 33.59, 32.97, 32.07, 30.84, 30.04, 27.91, 24.80, 21.69, 14.03]
+        y_values = [ 6.63,  7.60,  8.94, 10.72, 12.80, 15.18, 18.13, 20.08, 21.00, 22.08, 22.83, 23.41, 23.77, 24.23, 24.68, 25.12, 25.65, 26.52, 27.88, 29.57, 30.90, 34.80]
+        labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2',    '', '0.4',    '', '0.6',    '', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999', '1']
+        #labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999', '1']
+        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-75; 15 window')
+        for idx in range(len(labels)):
+            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
+            my_label.set_bbox(bbox_dict)
+
+        # Wulff-Fuentes et al. motif (page 3 of their paper)
+        plt.plot(0.08, 39.29, 'o', label = r'Wulff-Fuentes $\it{et}$ $\it{al.}$ motif (5/5)') # Only  28 unique sites follow the 5/5 motif; only  11 of these are O-GlcNAcylated
+        plt.plot(1.01, 20.33, 'o', label = r'Wulff-Fuentes $\it{et}$ $\it{al.}$ motif (4/5)') # Only 669 unique sites follow the 4/5 motif; only 136 of these are O-GlcNAcylated
         # No model / testing everything
-        plt.plot(100, 0.524, 's', label = 'No model')
+        plt.plot(100, 2.38, 's', label = 'No model')
 
     # F curves
     rec = np.linspace(0.030, 1, 195)
