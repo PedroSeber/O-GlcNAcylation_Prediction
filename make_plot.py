@@ -81,31 +81,76 @@ def main(data_version):
         plt.plot(100, 1.29, 's', label = 'No model')
 
     elif data_version == 'v5':
+        # Plotting - Our RNN-75; window size = 5
+        x_values = [85.08, 75.7 , 66.93, 59.09, 51.72, 45.31, 38.69, 34.43, 32.46, 30.24, 29.13, 28.02, 26.91, 26.02, 24.55, 23.3 , 21.44, 19.43, 15.46,  9.16,  4.15]
+        y_values = [ 3.21,  3.73,  4.45,  5.35,  6.46,  7.8 ,  9.35, 10.79, 11.54, 12.18, 12.86, 13.34, 13.71, 14.25, 14.52, 15.14, 16.2 , 17.11, 19.62, 22.7 , 26.79]
+        labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999']
+        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-75;   5 win')
+        for idx in range(len(labels)):
+            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
+            my_label.set_bbox(bbox_dict)
+
         # Plotting - Our RNN-75; window size = 10
-        x_values = [61.51,  57.66,  53.33,  49.74,  46.74,  43.19,  39.60,  37.27, 36.01, 34.53, 33.72, 33.31, 32.72, 32.09, 31.24, 30.61, 29.53, 28.24, 25.98, 22.98, 20.21, 13.14]
-        y_values = [ 5.78,   6.53,   7.44,   8.55,  10.05,  11.85,  13.90,  15.62, 16.36, 17.06, 17.66, 18.21, 18.64, 18.99, 19.31, 19.90, 20.65, 21.37, 22.72, 24.27, 25.89, 29.93]
-        labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2',    '', '0.4',    '', '0.6',    '', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999', '1']
+        x_values = [70.79, 64.24, 57.84, 52.97, 48.64, 44.88, 41.16, 38.8 , 37.8 , 36.65, 35.65, 34.79, 34.25, 33.5 , 32.75, 31.68, 30.42, 29.35, 26.84, 22.83, 18.54,  8.77]
+        y_values = [ 4.8 ,  5.84,  7.06,  8.74, 10.74, 13.07, 15.65, 17.48, 18.39, 19.44, 20.01, 20.55, 21.13, 21.54, 22.06, 22.46, 23.33, 24.22, 26.09, 27.91, 29.07, 34.36]
+        labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2',    '', '0.4',    '', '0.6',    '', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999',   '1']
         #labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999', '1']
-        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-75; 10 window')
+        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-75; 10 win')
         for idx in range(len(labels)):
             my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
             my_label.set_bbox(bbox_dict)
 
         # Plotting - Our RNN-75; window size = 15
-        x_values = [57.63, 53.62, 50.72, 48.05, 45.19, 42.34, 39.95, 37.78, 36.84, 35.90, 35.25, 34.78, 34.13, 33.59, 32.97, 32.07, 30.84, 30.04, 27.91, 24.80, 21.69, 14.03]
-        y_values = [ 6.63,  7.60,  8.94, 10.72, 12.80, 15.18, 18.13, 20.08, 21.00, 22.08, 22.83, 23.41, 23.77, 24.23, 24.68, 25.12, 25.65, 26.52, 27.88, 29.57, 30.90, 34.80]
-        labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2',    '', '0.4',    '', '0.6',    '', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999', '1']
+        x_values = [68.4 , 61.49, 55.91, 51.22, 47.6 , 44.6 , 41.41, 39.62, 38.73, 37.69, 37.33, 36.97, 36.51, 35.9 , 35.4 , 34.61, 33.61, 33.  , 30.6 , 27.59, 23.73, 12.13]
+        y_values = [ 5.12,  6.51,  8.32, 10.45, 13.23, 16.23, 19.2 , 21.65, 22.73, 23.74, 24.54, 25.25, 25.84, 26.13, 26.69, 27.31, 28.42, 29.38, 30.91, 33.58, 35.01, 39.15]
+        labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2',    '', '0.4',    '', '0.6',    '', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999',   '1']
         #labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999', '1']
-        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-75; 15 window')
+        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-75; 15 win')
+        for idx in range(len(labels)):
+            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
+            my_label.set_bbox(bbox_dict)
+
+        # Plotting - Our RNN-75; window size = 20
+        x_values = [69.69, 63.39, 57.91, 53.58, 49.53, 46.46, 43.27, 41.23, 40.37, 39.12, 38.01, 37.47, 36.9 , 36.15, 35.72, 34.82, 33.57, 31.82, 29.49, 24.48, 20.08,  5.48]
+        y_values = [ 5.21,  6.48,  8.15, 10.49, 13.28, 16.77, 20.58, 23.38, 24.68, 25.83, 26.42, 27.22, 27.97, 28.42, 29.16, 29.87, 30.79, 31.38, 33.73, 35.08, 36.84, 40.16]
+        labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2',    '', '0.4',    '', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999',   '1']
+        #labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999', '1']
+        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-75; 20 win')
+        for idx in range(len(labels)):
+            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
+            my_label.set_bbox(bbox_dict)
+
+        # Plotting - Our RNN-150; window size = 20
+        x_values = [88.83, 76.77, 64.57, 54.08, 47.21, 43.41, 41.02, 39.51, 38.87, 38.01, 37.58, 36.9 , 36.36, 35.86, 35.36, 34.54, 33.75, 32.86, 30.67, 27.49, 23.59,  7.8 ]
+        y_values = [ 3.08,  4.07,  6.21, 10.38, 17.42, 23.52, 27.58, 30.28, 31.58, 32.71, 33.5 , 34.04, 34.58, 34.96, 35.51, 35.87, 36.86, 37.7 , 39.04, 41.18, 42.79, 52.66]
+        labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2',    '', '0.4',    '', '0.6',    '', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999',   '1']
+        #labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999', '1']
+        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-150; 20 win')
+        for idx in range(len(labels)):
+            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
+            my_label.set_bbox(bbox_dict)
+
+        # Plotting - Our RNN-225; window size = 20
+        x_values = [62.92, 56.41, 51.04, 47.14, 44.42, 42.13, 40.3 , 38.55, 37.83, 37.08, 36.58, 36.22, 35.83, 35.47, 34.9 , 34.29, 33.39, 32.82, 31.1 , 28.31, 25.41, 14.03]
+        y_values = [ 5.87,  8.57, 11.96, 15.89, 20.43, 24.81, 29.4 , 32.08, 33.16, 34.3 , 35.11, 35.86, 36.37, 36.9 , 37.43, 37.84, 38.81, 39.75, 41.56, 43.39, 45.81, 53.04]
+        labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2',    '', '0.4',    '', '0.6',    '', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999',   '1']
+        #labels =  ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999', '0.9999', '1']
+        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our RNN-225; 20 win')
         for idx in range(len(labels)):
             my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
             my_label.set_bbox(bbox_dict)
 
         # Wulff-Fuentes et al. motif (page 3 of their paper)
-        plt.plot(0.08, 39.29, 'o', label = r'Wulff-Fuentes $\it{et}$ $\it{al.}$ motif (5/5)') # Only  28 unique sites follow the 5/5 motif; only  11 of these are O-GlcNAcylated
-        plt.plot(1.01, 20.33, 'o', label = r'Wulff-Fuentes $\it{et}$ $\it{al.}$ motif (4/5)') # Only 669 unique sites follow the 4/5 motif; only 136 of these are O-GlcNAcylated
+        x_values = [0.08, 1.01, 6.84, 23.94, 58.50]
+        y_values = [39.29, 20.33, 11.85, 5.89, 3.38]
+        labels = [5, 4, 3, 2, 1]
+        WF_dots = plt.plot(x_values, y_values, 'o', label = 'W-F motif')
+        bbox_dict_WF = dict(facecolor='white', alpha=1, edgecolor='white', linewidth = 0, pad = 0.25) # Additional padding
+        for idx in range(len(labels)):
+            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = WF_dots[0].get_color())
+            my_label.set_bbox(bbox_dict_WF)
         # No model / testing everything
-        plt.plot(100, 2.38, 's', label = 'No model')
+        plt.plot(100, 2.44, 's', label = 'No model')
 
     # F curves
     rec = np.linspace(0.030, 1, 195)
@@ -113,8 +158,8 @@ def main(data_version):
     x_pos = 100.3
     # These y_pos and extra rec points are manually set up
     if beta == 1:
-        y_pos = [1.8, 4.4, 7.2, 10.2, 13.4, 16.7, 20.3, 24.1]
-        x_pos_top = [1.9, 4.3, 7.3, 10.3, 13.5, 16.9, 20.4, 24.2]
+        y_pos = [1.8, 4.4, 7.2, 10.2, 13.4, 16.7, 20.3, 24.1, 28.0, 32.2, 36.9]
+        x_pos_top = [1.9, 4.3, 7.3, 10.3, 13.5, 16.9, 20.4, 24.0, 27.9]
         rec = np.sort( np.concatenate(([0.0255, 0.026, 0.027, 0.028, 0.029, 0.052, 0.053, 0.054], rec)) ) # The F = 0.05 and F = 0.10 curves need a few additional points
     elif beta == 2:
         y_pos = [0, 1.3, 0, 3.8, 0, 6.9, 0, 11.0]
@@ -124,9 +169,9 @@ def main(data_version):
     for idx, F_score in enumerate([0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40]):
         pre = F_score*rec / (rec + (beta**2*rec) - F_score*beta**2)
         plt.plot(rec[pre>0]*100, pre[pre>0]*100, ':k') # Plotting >0 to avoid impossible numbers (because recall is too low)
-        if 'y_pos' in locals() and y_pos[idx] > 0: # Right-side labels for F1 isolines
+        if 'y_pos' in locals() and idx < len(y_pos) and y_pos[idx] > 0: # Right-side labels for F1 isolines
             plt.text(x_pos, y_pos[idx], f'{round(F_score*100)}%', fontsize = 16)
-        if 'x_pos_top' in locals(): # Upper-side labels for F1 isolines
+        if 'x_pos_top' in locals() and idx < len(x_pos_top): # Upper-side labels for F1 isolines
             plt.text(x_pos_top[idx], 100.3, f'{round(F_score*100)}%', fontsize = 13)
 
     # Plot housekeeping

@@ -16,10 +16,9 @@ from itertools import product
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 # Convenience imports
-import pdb
 from time import time
 
-def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 75, data_version = 'v5', window_size = 10, batch_size = 32):
+def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 75, data_version = 'v5', window_size = 20, batch_size = 32):
     """
     Cross-validates and tests an MLP (lstm_size = 0) or RNN (lstm_size > 0) model on O-GlcNAcylation data. The data used depend on the data_version variable
 
@@ -33,26 +32,28 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
         The size of the LSTM layer. Set to 0 to use only an MLP
     data_version : string in the form 'v#', optional, default = 'v5'
         The version of the data to be used. Should be left as 'v5'
-    window_size : int, optional, default = 10
-        The number of AAs before and after the central S/T. Used only when data_version in {'v3', 'v5'}
+    window_size : int, optional, default = 20
+        The number of AAs before and after the central S/T. Used only when data_version == 'v5'
     batch_size : int, optional, default = 32
         The batch size used during cross-validation
     """
+
     ### DATA SETUP ###
     if data_version in {'v1', 'v2'}:
         window_size_path = ''
         myshape_X = data.shape[1] - 1 # For convenience when declaring ANNs
+        data = torch.Tensor(pd.read_csv(f'OH_data_{data_version}.csv').values) # X and y values
     elif data_version in {'v3', 'v4'}:
-        window_size_path = f'_{window_size}-window'
+        window_size_path = ''
         myshape_X = 76 # Manually declaring, 76 because the v1 dataset had 76 features
+        data = torch.Tensor(pd.read_csv(f'OH_data_{data_version}.csv').values) # y values
     else:
         window_size_path = f'_{window_size}-window'
         myshape_X = 75 # Rounded the 76 to 75
+        data = torch.Tensor(pd.read_csv(f'OH_data_{data_version}_5-window.csv').values) # y values
     # Loading and transforming the data if using an LSTM
     if lstm_size:
         lstm_data = torch.Tensor(np.load(f'OH_LSTM_data_{data_version}{window_size_path}.npy'))
-    data = torch.Tensor(pd.read_csv(f'OH_data_{data_version}{window_size_path}.csv').values) # This is used for all ANN types
-
     # Pre-declaring paths for convenience (to save / load results)
     if lstm_size:
         working_dir = f'RNN_{lstm_size}_results_{data_version}-data{window_size_path}'
@@ -63,7 +64,6 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
 
     # Setting each activ_fun to lowercase for consistency
     activ_fun_list = [activ_fun.casefold() for activ_fun in activ_fun_list]
-
     # Data splitting - 80% Cross Validation, 20% Test
     if lstm_size:
         cv_data, test_data, cv_lstm_data, test_lstm_data = train_test_split(data, lstm_data, test_size = 0.2, random_state = 123)
@@ -72,31 +72,32 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
 
     ### MODEL AND RUN SETUP ###
     # Setting up the hyperparameters
+    n_epochs = 70
     layers = [
         # 1 hidden layer
-        #[(myshape_X, myshape_X*12), (myshape_X*12, 2)], ## Not in the MLP-only
-        #[(myshape_X, myshape_X*11), (myshape_X*11, 2)], ## Not in the MLP-only
-        #[(myshape_X, myshape_X*10), (myshape_X*10, 2)], ## Not in the MLP-only
-        #[(myshape_X, myshape_X*9), (myshape_X*9, 2)], ## Not in the MLP-only CV
-        #[(myshape_X, myshape_X*8), (myshape_X*8, 2)], ##
-        [(myshape_X, myshape_X*7), (myshape_X*7, 2)], ##
-        [(myshape_X, myshape_X*6), (myshape_X*6, 2)], ##
-        [(myshape_X, myshape_X*5), (myshape_X*5, 2)], ## Not in the LSTM w/ Mauri CV
+        #[(myshape_X, myshape_X*12), (myshape_X*12, 2)],
+        #[(myshape_X, myshape_X*11), (myshape_X*11, 2)],
+        #[(myshape_X, myshape_X*10), (myshape_X*10, 2)],
+        #[(myshape_X, myshape_X*9), (myshape_X*9, 2)],
+        ###[(myshape_X, myshape_X*8), (myshape_X*8, 2)],
+        ###[(myshape_X, myshape_X*7), (myshape_X*7, 2)],
+        #[(myshape_X, myshape_X*6), (myshape_X*6, 2)],
+        #[(myshape_X, myshape_X*5), (myshape_X*5, 2)],
         #[(myshape_X, myshape_X*4), (myshape_X*4, 2)],
         #[(myshape_X, myshape_X*3), (myshape_X*3, 2)],
         #[(myshape_X, myshape_X*2), (myshape_X*2, 2)],
-        #[(myshape_X, myshape_X), (myshape_X, 2)],
+        [(myshape_X, myshape_X), (myshape_X, 2)],
+        [(myshape_X, myshape_X//2), (myshape_X//2, 2)],
+        [(myshape_X, 20), (20, 2)],
     ]
     #lr_vals = [1e-2, 5e-3, 1e-3, 5e-4]
-    lr_vals = [1e-2, 5e-3]
+    lr_vals = [1e-3]
     hyperparam_list = list(product(layers, lr_vals))
-    # v1: There are 42'981 total points / 570 positive (1.33%) -> "natural" my_weight[1] = (42981-570)/570 = 74.4
-    # v3: There are 41'600 total points / 535 positive (1.29%) -> (41600-535)/535 = 76.8
     my_weight = torch.Tensor(weight_hyperparam)
     my_loss = torch.nn.CrossEntropyLoss(weight = my_weight).cuda()
 
     ### TRAINING AND VALIDATING THE MODEL ###
-    def CV_model(activ_fun, working_dir, F1_score_file, val_loss_file):
+    def CV_model(activ_fun, working_dir, F1_score_file):
         """
         This function runs a cross-validation procedure for each combination of layers + learning rates
         Results are saved in a .csv file inside {working_dir}
@@ -111,10 +112,6 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
             final_val_F1 = pd.read_csv(f'{working_dir}/{F1_score_file}', index_col = 0)
         except FileNotFoundError:
             final_val_F1 = pd.DataFrame(np.nan, index = lr_vals, columns = [str(elem) for elem in layers])
-        try: # Separate try-except to ensure F1 records aren't overwritten if they exist w/o val-loss records
-            final_val_loss = pd.read_csv(f'{working_dir}/{val_loss_file}', index_col = 0)
-        except FileNotFoundError:
-            final_val_loss = pd.DataFrame(np.nan, index = lr_vals, columns = [str(elem) for elem in layers])
 
         # Train and validate
         print(f'Beginning CV on activation function {activ_fun} (weight = {weight_hyperparam[1]})')
@@ -122,121 +119,70 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
             # We added a new layer configuration to the hyperparameters
             if not str(cur_hp[0]) in list(final_val_F1.columns):
                 final_val_F1.insert(layers.index(cur_hp[0]), str(cur_hp[0]), np.nan) # layers.index to ensure consistent order
-            if not str(cur_hp[0]) in list(final_val_loss.columns):
-                final_val_loss.insert(layers.index(cur_hp[0]), str(cur_hp[0]), np.nan)
             # We added a new learning rate to the hyperparameters
             if not cur_hp[1] in final_val_F1.index.to_list():
                 final_val_F1.loc[cur_hp[1], :] = np.nan
-            if not cur_hp[1] in final_val_loss.index.to_list():
-                final_val_loss.loc[cur_hp[1], :] = np.nan
+                final_val_F1 = final_val_F1.sort_index(ascending = False) # Sorting the indices
 
             # Run CV only if we do not have validation losses for this set of parameters
             if np.isnan( final_val_F1.at[cur_hp[1], str(cur_hp[0])] ):
                 print(f'Beginning hyperparameters {cur_idx+1:2}/{len(hyperparam_list)} for {activ_fun}; layers = {cur_hp[0]}, lr = {cur_hp[1]}')
                 temp_val_F1 = 0
-                temp_val_loss = 0
                 my_kfold = StratifiedKFold(n_splits = 5, shuffle = True, random_state = 123)
                 for fold_idx, (train_idx, val_idx) in enumerate(my_kfold.split(cv_data[:, :-1], cv_data[:, -1])):
                     print(f'Current fold: {fold_idx+1}/{my_kfold.n_splits}', end = '\r')
                     # Creating the Datasets
                     if lstm_size:
                         train_dataset_fold = MyDataset(cv_data[train_idx], cv_lstm_data[train_idx])
-                        train_neg = torch.where(cv_data[train_idx] == 0)[0] # Idxs of negative training samples
-                        train_pos = torch.where(cv_data[train_idx] == 1)[0]
                         val_dataset_fold = MyDataset(cv_data[val_idx], cv_lstm_data[val_idx])
                     else:
                         train_dataset_fold = MyDataset(cv_data[train_idx])
                         val_dataset_fold = MyDataset(cv_data[val_idx])
 
-                    num_repeats = 0 # Count how many times the while loop repeated
-                    while not num_repeats or CM[1,1]+CM[0,1] == 0:# or CM[0,0]+CM[1,0] == 0: # 1st run or precision was = 0 (all sites negative) or all sites positive --> fold had a bad initialization; rerun
-                        if 'delta_t' in locals(): # To ensure some print messages actually print
-                            del delta_t
-                        # Creating the DataLoaders
-                        train_loader_fold = DataLoader(train_dataset_fold, batch_size, shuffle = True)
-                        val_loader_fold = DataLoader(val_dataset_fold, batch_size, shuffle = True)
-
+                    # Creating the DataLoaders
+                    train_loader_fold = DataLoader(train_dataset_fold, batch_size, shuffle = True)
+                    val_loader_fold = DataLoader(val_dataset_fold, batch_size, shuffle = True)
+                    best_F1_fold = 0
+                    while best_F1_fold == 0: # Rare initializations have no improvement at all
                         # Declaring the model and optimizer
                         model = SequenceMLP(cur_hp[0], activ_fun, lstm_size).cuda()
-                        optimizer = torch.optim.Adam(model.parameters(), lr = cur_hp[1])
-                        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor = 0.5, patience = 7, verbose = True, min_lr = 1e-5)
-                        # Convenience variables
-                        increase_set_interval = 7
-                        n_divisions_set = 6
-                        n_epochs = increase_set_interval * (n_divisions_set+3)
-                        n_epochs = 65
+                        optimizer = torch.optim.AdamW(model.parameters(), lr = cur_hp[1], weight_decay = 1e-2)
+                        # First 10 epochs involve linearly increasing the LR, then it decreases in a cosine-like way to final_lr until epoch n_epochs-10
+                        scheduler = CosineScheduler(n_epochs-10, base_lr = cur_hp[1], warmup_steps = 10, final_lr = cur_hp[1]/15)
                         # Train and validate
                         for epoch in range(n_epochs):
-                            # Begin with a less-imbalanced dataset, and gradually add more negative entries
-                            """if data_version == 'v5' and epoch in set(increase_set_interval*np.arange(0, n_divisions_set+1)): # Make a loader change every increase_set_interval epochs
-                                negative_cutoff = (len(train_idx) // n_divisions_set) * (epoch//increase_set_interval + 1) # Discards 0 to n_divisions_set samples on the last dataset expansion, but this is acceptable
-                                train_idx_reduced = torch.cat((train_pos, train_neg[:negative_cutoff]))
-                                #print(f'Epoch {epoch:3}, using {len(train_idx_reduced):7,} / {len(train_idx):,}' + ' '*5)
-                                temp = train_dataset_fold[train_idx_reduced] # This is a tuple of len = 3, each entry containing "many" entries
-                                temp = tuple(zip(temp[0], temp[1], temp[2])) # This is a tuple of len = "many", each entry containing 3 entries
-                                train_loader_fold = DataLoader(temp, batch_size, shuffle = True)"""
                             t1 = time()
-                            if 'delta_t' in locals():
-                                print(f'Current fold: {fold_idx+1}/{my_kfold.n_splits}; epoch: {epoch+1:2}/{n_epochs}; number of repeats: {num_repeats:2}; Epoch time = {delta_t:.2f}  ', end = '\r')
+                            if epoch != 0:
+                                print(f'Current fold: {fold_idx+1}/{my_kfold.n_splits}; epoch: {epoch+1:2}/{n_epochs}; Best F1 = {best_F1_fold*100:5.2f}; Epoch time = {delta_t:.2f}  ', end = '\r')
                             else:
-                                print(f'Current fold: {fold_idx+1}/{my_kfold.n_splits}; epoch: {epoch+1:2}/{n_epochs}; number of repeats: {num_repeats:2}')
-                            train_loss = loop_model(model, optimizer, train_loader_fold, my_loss, epoch, lstm_size)
-                            val_loss = loop_model(model, optimizer, val_loader_fold, my_loss, epoch, lstm_size, evaluation = True)
-                            ###if data_version == 'v5' and epoch >= increase_set_interval*n_divisions_set: # Scheduler activates only on higher epochs, when the training dataset is complete
-                            scheduler.step(val_loss)
+                                print(f'Current fold: {fold_idx+1}/{my_kfold.n_splits}; epoch: {epoch+1:2}/{n_epochs}')
+                            loop_model(model, optimizer, train_loader_fold, my_loss, epoch, batch_size, lstm_size)
+                            val_loss, F1 = loop_model(model, optimizer, val_loader_fold, my_loss, epoch, batch_size, lstm_size, evaluation = True)
+                            if F1 > best_F1_fold:
+                                best_F1_fold = F1
+                            if scheduler.__module__ == 'torch.optim.lr_scheduler': # Pytorch built-in scheduler
+                                scheduler.step(val_loss)
+                            else: # Custom scheduler
+                                for param_group in optimizer.param_groups:
+                                    param_group['lr'] = scheduler(epoch)
                             t2 = time()
                             delta_t = t2 - t1
-                            if cur_hp[1]/optimizer.param_groups[0]['lr'] >= 15.9: # 4 reductions in LR. Should be 16, but doing 15.9 due to floats
-                                print(f'Early stopping at epoch {epoch+1:2}' + ' '*5)
-                                break
-                        # Calculating and recording the validation F1 score for this fold
-                        val_pred = torch.empty((len(val_loader_fold.dataset), 2))
-                        val_y = torch.empty((len(val_loader_fold.dataset)), dtype = torch.long)
-                        for idx, data in enumerate(val_loader_fold):
-                            if lstm_size:
-                                X, y, lstm = data
-                                lstm = lstm.cuda()
-                            else:
-                                X, y = data
-                                lstm = None
-                            X = X.cuda()
-                            pred = model(X, lstm).cpu().detach()
-                            val_pred[idx*batch_size:(idx*batch_size)+len(pred), :] = pred
-                            val_y[idx*batch_size:(idx*batch_size)+len(y)] = y
-                        val_pred_CM = val_pred.argmax(axis=1)
-                        CM = confusion_matrix(val_y, val_pred_CM) # Confusion matrix to make F1 calcs easier
-                        num_repeats += 1
-                    rec = CM[1,1]/(CM[1,1]+CM[1,0])
-                    pre = CM[1,1]/(CM[1,1]+CM[0,1])
-                    if rec and pre: # Avoids dividing by 0 when calculating F1
-                        F1 = 2/(1/rec + 1/pre)
-                    else:
-                        F1 = 0
-                    print(CM)
-                    print(F1)
-                    temp_val_F1 += F1 / my_kfold.n_splits
-                    temp_val_loss += my_loss(val_pred.cuda(), val_y.cuda()) / my_kfold.n_splits
+                    print(f'Fold {fold_idx+1}/{my_kfold.n_splits} done; Best F1 = {best_F1_fold*100:5.2f}; Epoch time = {delta_t:.2f}' + ' '*18)
+                    temp_val_F1 += best_F1_fold / my_kfold.n_splits
 
                 # Saving the average validation F1 after CV
-                temp_val_loss = temp_val_loss.cpu().detach().item()
                 final_val_F1.at[cur_hp[1], str(cur_hp[0])] = temp_val_F1
-                final_val_loss.at[cur_hp[1], str(cur_hp[0])] = temp_val_loss
                 final_val_F1.to_csv(f'{working_dir}/{F1_score_file}')
-                final_val_loss.to_csv(f'{working_dir}/{val_loss_file}')
         return final_val_F1
 
-    final_val_F1_list = np.empty_like(activ_fun_list, dtype = object) # This will hold multiple DataFrames, one for each activation fun type
+    final_val_F1_list = np.empty_like(activ_fun_list, dtype = object) # This will hold multiple DataFrames, one for each activation function
     for idx, activ_fun in enumerate(activ_fun_list):
-        # Setup for the results files
-        F1_score_file = f'ANN_F1_{activ_fun}_{weight_hyperparam[1]}weight.csv'
-        val_loss_file = f'ANN_val-loss_{activ_fun}_{weight_hyperparam[1]}weight.csv'
-        # Running the CV
-        final_val_F1_list[idx] = CV_model(activ_fun, working_dir, F1_score_file, val_loss_file)
+        F1_score_file = f'ANN_F1_{activ_fun}_{weight_hyperparam[1]}weight.csv' # Results file setup
+        final_val_F1_list[idx] = CV_model(activ_fun, working_dir, F1_score_file) # Running the CV
 
     ### FINAL EVALUATION - TESTING THE BEST MODEL ###
     def run_final_evaluation(model, activ_fun, threshold = 0.5):
         model.eval()
-
         # Train loss
         train_pred = torch.empty((len(train_loader.dataset), 2))
         train_y = torch.empty((len(train_loader.dataset)), dtype = torch.long)
@@ -251,8 +197,6 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
             pred = model(X, lstm).cpu().detach()
             train_pred[idx*batch_size:(idx*batch_size)+len(pred), :] = pred
             train_y[idx*batch_size:(idx*batch_size)+len(y)] = y
-        #train_loss = my_loss(train_pred, train_y)
-        #print(f'The train loss was {train_loss.item():.3f}')
         # Renormalizing the train_pred
         train_pred = (train_pred.T / train_pred.sum(axis=1)).T
         # Train confusion matrix
@@ -267,9 +211,6 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
         print(f'The train recall was {rec*100:.2f}%')
         print(f'The train precision was {pre*100:.2f}%')
         print(f'The train F1 score was {f1*100:.2f}%')
-        #fig, ax = plt.subplots(figsize = (8,8))
-        #ax.set_title(f'{activ_fun} - Train Confusion Matrix')
-        #_ = ConfusionMatrixDisplay(CM).plot(ax = ax)
 
         # Test loss
         test_pred = torch.empty((len(test_loader.dataset), 2))
@@ -302,9 +243,6 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
         print(f'The test precision was {pre*100:.2f}%')
         print(f'The test F1 score was {f1*100:.2f}%')
         print(CM)
-        #fig, ax = plt.subplots(figsize = (8,8))
-        #ax.set_title(f'{activ_fun} - Test Confusion Matrix')
-        #_ = ConfusionMatrixDisplay(CM).plot(ax = ax)
 
     # Creating the full training Dataset / DataLoader
     if lstm_size:
@@ -346,11 +284,17 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
             model.load_state_dict(mydict)
         except FileNotFoundError: # Retraining the model with the full training set
             optimizer = torch.optim.Adam(model.parameters(), lr = best_LR)
+            # First 10 epochs involve linearly increasing the LR, then it decreases in a cosine-like way to final_lr until epoch n_epochs-10
+            scheduler = CosineScheduler(n_epochs-10, base_lr = best_LR, warmup_steps = 10, final_lr = best_LR/15)
             # Retrain
             for epoch in range(n_epochs):
-                if lstm_size:
-                    print(f'For {activ_fun}: epoch {epoch+1:3}/{n_epochs}' + ' '*20, end = '\r')
-                train_loss = loop_model(model, optimizer, train_loader, my_loss, epoch, lstm_size)
+                print(f'Final training for {activ_fun}: epoch {epoch+1:3}/{n_epochs}' + ' '*20, end = '\r')
+                loop_model(model, optimizer, train_loader, my_loss, epoch, batch_size, lstm_size)
+                if scheduler.__module__ == 'torch.optim.lr_scheduler': # Pytorch built-in scheduler
+                    scheduler.step(val_loss)
+                else: # Custom scheduler
+                    for param_group in optimizer.param_groups:
+                        param_group['lr'] = scheduler(epoch)
             # Save the retrained model
             torch.save(model.state_dict(), f'{working_dir}/{best_model_file}')
 
@@ -413,21 +357,45 @@ class SequenceMLP(torch.nn.Module):
     def forward(self, x, lstm_data = None):
         if 'lstm' in dir(self):
             _, (ht, _) = self.lstm(lstm_data) # Passing only the seq data through the LSTM
-            to_MLP = ht[-1]
+            to_MLP = (ht[0] + ht[1]) / 2 # Average between forward and backward
             out = self.model(to_MLP)
         else:
             out = self.model(x)
         probs = self.sigmoid(out)
         return probs
 
+class CosineScheduler: # Code obtained from https://d2l.ai/chapter_optimization/lr-scheduler.html
+    def __init__(self, max_update, base_lr=0.01, final_lr=0, warmup_steps=0, warmup_begin_lr=0):
+        self.base_lr_orig = base_lr
+        self.max_update = max_update
+        self.final_lr = final_lr
+        self.warmup_steps = warmup_steps
+        self.warmup_begin_lr = warmup_begin_lr
+        self.max_steps = self.max_update - self.warmup_steps
+
+    def get_warmup_lr(self, epoch):
+        increase = (self.base_lr_orig - self.warmup_begin_lr) * float(epoch) / float(self.warmup_steps)
+        return self.warmup_begin_lr + increase
+
+    def __call__(self, epoch):
+        if epoch < self.warmup_steps:
+            return self.get_warmup_lr(epoch)
+        if epoch <= self.max_update:
+            self.base_lr = self.final_lr + (
+                self.base_lr_orig - self.final_lr) * (1 + np.cos(
+                np.pi * (epoch - self.warmup_steps) / self.max_steps)) / 2
+        return self.base_lr
+
 # A helper function that is called every epoch of training or validation
-def loop_model(model, optimizer, loader, loss_function, epoch, lstm_size = None, evaluation = False):
+def loop_model(model, optimizer, loader, loss_function, epoch, batch_size, lstm_size = None, evaluation = False):
     if evaluation:
         model.eval()
+        val_pred = torch.empty((len(loader.dataset), 2))
+        val_y = torch.empty((len(loader.dataset)), dtype = torch.long)
     else:
         model.train()
     batch_losses = []
-    for data in loader:
+    for idx, data in enumerate(loader):
         if lstm_size:
             X, y, lstm = data
             lstm = lstm.cuda()
@@ -438,13 +406,28 @@ def loop_model(model, optimizer, loader, loss_function, epoch, lstm_size = None,
         y = y.cuda()
         pred = model(X, lstm)
         loss = loss_function(pred, y)
+        batch_losses.append(loss.item()) # Saving losses
         # Backpropagation
         if not evaluation:
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        batch_losses.append(loss.item()) # Saving losses
-    return np.array(batch_losses).mean()
+        else:
+            val_pred[idx*batch_size:(idx*batch_size)+len(pred), :] = pred.cpu().detach()
+            val_y[idx*batch_size:(idx*batch_size)+len(y)] = y
+    if evaluation: # Obtaining the validation F1 score
+        val_pred_CM = val_pred.argmax(axis=1)
+        CM = confusion_matrix(val_y, val_pred_CM) # Confusion matrix to make F1 calcs easier
+        if CM[1,1]+CM[1,0] and CM[1,1]+CM[0,1]: # Avoids dividing by 0
+            rec = CM[1,1]/(CM[1,1]+CM[1,0])
+            pre = CM[1,1]/(CM[1,1]+CM[0,1])
+        else:
+            rec, pre = 0, 0
+        if rec and pre: # Avoids dividing by 0 when calculating F1
+            F1 = 2/(1/rec + 1/pre)
+        else:
+            F1 = 0
+        return np.array(batch_losses).mean(), F1
 
 if __name__ == '__main__':
     # Input setup

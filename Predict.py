@@ -6,28 +6,26 @@ from os.path import join as osjoin
 from os.path import exists as osexists
 from ANN_train import SequenceMLP
 from one_hot_encode_csv import OHE_for_LSTM
-import pdb
 
 def predict_OGlcNAcylation(sequence, threshold = 0.5, batch_size = 2048):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    window_size = 15
     # Sequence data preparation
     if osexists(sequence): # User passed a .csv with sequences
         sequence_path = sequence
         sequence = pd.read_csv(sequence).values.squeeze()
     # One-hot encoding the sequences
-    OHE_seq = torch.Tensor(OHE_for_LSTM(np.atleast_1d(np.array(sequence)), window_size))
+    OHE_seq = torch.Tensor(OHE_for_LSTM(np.atleast_1d(np.array(sequence)), 20))
     seq_dataloader = DataLoader(OHE_seq, batch_size, shuffle = False)
 
     # Model preparation
-    mydict = torch.load(osjoin(f'RNN-75_{window_size}-window_dict.pt'), map_location = torch.device(device)) # TODO: figure out path
+    mydict = torch.load(osjoin('RNN-225_20-window_dict.pt'), map_location = torch.device(device))
     # Getting the size of the model from mydict
     layers = []
     for array_name, array in mydict.items():
         if 'weight' in array_name:
             layers.append(tuple(array.T.shape))
     # Building the model
-    model = SequenceMLP(layers[4:], 'tanhshrink', layers[1][0]) # TODO: double-check this is always correct
+    model = SequenceMLP(layers[4:], 'relu', layers[1][0])
     model.load_state_dict(mydict)
     model.to(device)
     model.eval()

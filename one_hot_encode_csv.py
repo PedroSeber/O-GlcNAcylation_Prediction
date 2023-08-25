@@ -16,10 +16,11 @@ def preprocess_data(filename, window_size = 10):
     ----------
     filename : string
         The name of the raw data file.
-        Should be one of "file_for_ML.csv", "file_for_ML_v2.csv", "all_sites_fixed.csv", "all_sites_PS.csv", "all_sites_PS_Uniprot.csv", or "OVSlab_allSpecies_O-GlcNAcome_PS.csv"
+        Should be one of "file_for_ML.csv", "file_for_ML_v2.csv", "all_sites_fixed.csv", "all_sites_PS.csv", "all_sites_PS_Uniprot.csv", or "OVSlab_allSpecies_O-GlcNAcome_PS.csv".
     window_size : int, optional, default = 10
-        if filename in {'all_sites_fixed.csv', 'all_sites_PS.csv', 'all_sites_PS_Uniprot.csv'}, the size of each side of the window taken for each protein sequence
-        Each final sequence has 2*window_size + 1 amino acids
+        If filename == "OVSlab_allSpecies_O-GlcNAcome_PS.csv" (v5 data), the size of each side of the window taken for each protein sequence.
+            Each final sequence has 2*window_size + 1 amino acids.
+        Else, the window_size is fixed at 10 and each final sequence has 21 amino acids (for comparison with YinOYang).
     """
     if filename == 'file_for_ML.csv':
         X_data_range = list(range(1, 15))
@@ -115,7 +116,7 @@ def preprocess_data(filename, window_size = 10):
             if data.iat[idx, 0] not in has_been_sweeped: # Run through the entire sequence only once
                 for letter_idx, letter in enumerate(data.iat[idx, 2]):
                     if letter in {'T', 'S'} or letter_idx == int(data.iat[idx, 1])-1: # Take all T/S or the first positive site
-                        seq_data.append( get_nearby_AA(data.iat[idx, 2], letter_idx, window_size) )
+                        seq_data.append( get_nearby_AA(data.iat[idx, 2], letter_idx, 10) ) # Technically could use any window_size, but other values would prevent comparison with YinOYang
                         y_boolean.append( int((data.iat[idx, 0], letter_idx) in positive_sites) )
                 has_been_sweeped.add(data.iat[idx, 0]) # Add the protein ID to a set, to avoid running through this entire protein again
             elif data.iat[idx, 2][data.iat[idx, 1]-1] not in {'T', 'S'}: # This protein has more than one positive site, but we have taken it already if that additional site is an S or T
@@ -123,13 +124,13 @@ def preprocess_data(filename, window_size = 10):
                 # For all_sites_fixed.csv, there are 4 first sites that are non-S and non-T, one in each of F6T0L5, P52285, Q8WWM7, and Q557E4
                 seq_data.append( get_nearby_AA(data.iat[idx, 2], data.iat[idx, 1]-1) )
                 y_boolean.append(1) # We know this is a positive site
-        OHE_seq_data = OHE_for_LSTM(np.array(seq_data), window_size)
+        OHE_seq_data = OHE_for_LSTM(np.array(seq_data), 10) # Technically could use any window_size, but other values would prevent comparison with YinOYang
         # Modifying the name of the saved file
         if filename == 'all_sites_fixed.csv':
             data_version = 'v3'
         else:
             data_version = f'v4{"-Uniprot"*("Uniprot" in filename)}' # v4 or v4-Uniprot
-        np.save(f'OH_LSTM_data_{data_version}_{window_size}-window.npy', OHE_seq_data) # np.save instead of csv because this is a 3D array
+        np.save(f'OH_LSTM_data_{data_version}.npy', OHE_seq_data) # np.save instead of csv because this is a 3D array
         y_boolean = pd.Series(y_boolean, name = 'is_glycosylated')
         y_boolean.to_csv(f'OH_data_{data_version}.csv', index = False)
     elif filename == 'OVSlab_allSpecies_O-GlcNAcome_PS.csv':
@@ -141,9 +142,11 @@ def preprocess_data(filename, window_size = 10):
             for site in temp_sites:
                 positive_sites.add( (data.iat[idx, 0], int(site[1:])) ) # site[1:] to not add the letter
         seq_data = []
-        seq_data_10 = []
-        seq_data_15 = []
-        seq_data_20 = []
+        if window_size == 5:
+            seq_data_10 = [] # Comment out this line to not generate data for larger window sizes
+            seq_data_15 = []
+            seq_data_20 = []
+            seq_data_25 = []
         y_boolean = []
         already_included = set()
         conflict_seqs = set()
@@ -157,14 +160,30 @@ def preprocess_data(filename, window_size = 10):
                     if (sequence, positive_bool) not in already_included and (sequence, not(positive_bool)) not in already_included: # Equivalent to just checking whether the sequence has been included
                         seq_data.append(sequence)
                         y_boolean.append(int(positive_bool)) # Ints allow one to easily obtain the sum and mean of the data
-                        if window_size == 5: # Other datasets for test-set leakage analysis
-                            pass
+                        if window_size == 5 and 'seq_data_10' in locals(): # Also preparing seq data for larger window sizes
+                            seq_data_10.append(get_nearby_AA(data.iat[idx, 3], letter_idx, 10))
+                            seq_data_15.append(get_nearby_AA(data.iat[idx, 3], letter_idx, 15))
+                            seq_data_20.append(get_nearby_AA(data.iat[idx, 3], letter_idx, 20))
+                            seq_data_25.append(get_nearby_AA(data.iat[idx, 3], letter_idx, 25))
                         already_included.add((sequence, positive_bool))
                     elif (sequence, not(positive_bool)) in already_included: # Conflict: the sequence has already been included, but with the opposite glycosylation status
                         conflict_seqs.add( (sequence, int(not(positive_bool))) )
-        print('One-hot encoding the sequence data' + ' '*15, end = '\r')
+        print('One-hot encoding the sequence data' + ' '*15)
         OHE_seq_data = OHE_for_LSTM(np.array(seq_data), window_size)
-        np.save(f'OH_LSTM_data_v5_{window_size}-window.npy', OHE_seq_data) # np.save instead of csv because this is a 3D array
+        if window_size == 5:
+            np.save('OH_LSTM_data_v5_5-window.npy', OHE_seq_data) # np.save instead of csv because this is a 3D array
+        else: # Directly using a larger window_size adds entries to the dataset. These entries have identical amino acids between -5 and 5, but are unique (at least one different amino acid between -X and X)
+            np.save(f'OH_LSTM_data_v5_{window_size}-window_expanded.npy', OHE_seq_data) # np.save instead of csv because this is a 3D array
+        if window_size == 5 and 'seq_data_10' in locals():
+            print('One-hot encoding sequence data for larger windows' + ' '*10)
+            OHE_seq_data_10 = OHE_for_LSTM(np.array(seq_data_10), 10)
+            np.save('OH_LSTM_data_v5_10-window.npy', OHE_seq_data_10) # np.save instead of csv because this is a 3D array
+            OHE_seq_data_15 = OHE_for_LSTM(np.array(seq_data_15), 15)
+            np.save('OH_LSTM_data_v5_15-window.npy', OHE_seq_data_15) # np.save instead of csv because this is a 3D array
+            OHE_seq_data_20 = OHE_for_LSTM(np.array(seq_data_20), 20)
+            np.save('OH_LSTM_data_v5_20-window.npy', OHE_seq_data_20) # np.save instead of csv because this is a 3D array
+            OHE_seq_data_25 = OHE_for_LSTM(np.array(seq_data_20), 25)
+            np.save('OH_LSTM_data_v5_25-window.npy', OHE_seq_data_25) # np.save instead of csv because this is a 3D array
         # Setting conflict sequences as positive, since they're glycosylated in at least one site
         for elem in conflict_seqs:
             if elem[1] == 0:
@@ -172,25 +191,26 @@ def preprocess_data(filename, window_size = 10):
                 y_boolean[temp_idx] = 1
         y_boolean = pd.Series(y_boolean, name = 'is_glycosylated')
         y_boolean.to_csv(f'OH_data_v5_{window_size}-window.csv', index = False)
-        # W-F et al. motif analysis (page 3 of their paper) - should be done only once with window_size == 3
-        """follows_motif = np.zeros_like(y_boolean, dtype = bool)
-        for idx, seq in enumerate(seq_data):
-            if len(seq) < 6:
-                n_follow = 0
-            elif seq[window_size] == 'S':
-                n_follow = (seq[window_size-3]=='P') + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) + ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) + (seq[window_size+2]=='A')
-            elif seq[window_size] == 'T':
-                n_follow = ((seq[window_size-3]=='P')|(seq[window_size-3]=='T')) + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) + ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) + ((seq[window_size+2]=='A')|(seq[window_size+2]=='T'))
-            follows_motif[idx] = n_follow >= 4 # Change this threshold as needed
-        y_boolean = pd.Series(y_boolean, dtype = bool) # Converting to bool to avoid weirdness with negation. Original is int for convenience
-        motif_TP = (y_boolean&follows_motif).sum()
-        motif_TN = (~y_boolean&~follows_motif).sum()
-        motif_FP = (~y_boolean&follows_motif).sum()
-        motif_FN = (y_boolean&~follows_motif).sum()
-        rec = motif_TP / (motif_TP + motif_FN)
-        pre = motif_TP / (motif_TP + motif_FP)
-        f1 = 2/(1/rec + 1/pre)
-        print(f'W-F et al. Motif: Rec = {rec*100:.2f}, Pre = {pre*100:.2f}, F1 = {f1*100:.2f}, TP = {motif_TP}, TP + FP (what is marked as positive) = {motif_TP + motif_FP}' + ' '*10)"""
+        # W-F et al. motif analysis (page 3 of their paper) - should be done once per minimum threshold (line 204). Run this file with window_size == 3
+        if window_size == 3:
+            follows_motif = np.zeros_like(y_boolean, dtype = bool)
+            for idx, seq in enumerate(seq_data):
+                if len(seq) < 6:
+                    n_follow = 0
+                elif seq[window_size] == 'S':
+                    n_follow = (seq[window_size-3]=='P') + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) + ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) + (seq[window_size+2]=='A')
+                elif seq[window_size] == 'T':
+                    n_follow = ((seq[window_size-3]=='P')|(seq[window_size-3]=='T')) + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) + ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) + ((seq[window_size+2]=='A')|(seq[window_size+2]=='T'))
+                follows_motif[idx] = n_follow >= 5 # Change this threshold as needed
+            y_boolean = pd.Series(y_boolean, dtype = bool) # Converting to bool to avoid weirdness with negation. Original is int for convenience
+            motif_TP = (y_boolean&follows_motif).sum()
+            motif_TN = (~y_boolean&~follows_motif).sum()
+            motif_FP = (~y_boolean&follows_motif).sum()
+            motif_FN = (y_boolean&~follows_motif).sum()
+            rec = motif_TP / (motif_TP + motif_FN)
+            pre = motif_TP / (motif_TP + motif_FP)
+            f1 = 2/(1/rec + 1/pre)
+            print(f'W-F et al. Motif: Rec = {rec*100:.2f}, Pre = {pre*100:.2f}, F1 = {f1*100:.2f}, TP = {motif_TP}, TP + FP (what is marked as positive) = {motif_TP + motif_FP}' + ' '*10)
         conflict_seqs = pd.DataFrame(tuple(conflict_seqs), columns = ['Conflicting sequence', 'O-Glyco status in the processed data']) # tuple() because Pandas doesn't convert sets to Series
         conflict_seqs.to_csv(f'Conflicts_data_v5_window-size_{window_size}.csv', index = False)
         print(f'Total sites: {len(seq_data):,}' + ' '*30)
@@ -203,7 +223,8 @@ def OHE_for_LSTM(sequences, window = 10):
     X = np.empty(( sequences.shape[0], sequence_size, 20 ), dtype = np.uint8) # sequences.shape[0] AA sequences, 2*window + 1 AAs per protein sequence, 20 nucleotides in one-hot enconding per site
 
     for idx, elem in enumerate(sequences):
-
+        if not(idx % 5000):
+            print(f'OHE current idx: {idx:6,}/{sequences.shape[0]-1:,} (Updated every 5000 idx)', end = '\r')
         # list(elem) separates the AAs into one list with 2*window + 1 elements [instead of a single string]
         # The lb.transform() then creates a (2*window + 1)x20 array
         temp = lb.transform(list(elem))
