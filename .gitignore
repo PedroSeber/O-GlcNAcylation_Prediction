@@ -1,13 +1,17 @@
 # Backups
 *.7z
 
+# Data files
+*.npy
+
 # Other files
 *.txt
 *.ods
 *.png
+*.tiff
 Conflicts*.csv
 
 # Folders
 __pycache__/
 *_results*/
-
+.ipynb_checkpoints/
