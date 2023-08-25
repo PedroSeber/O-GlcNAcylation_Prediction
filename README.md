@@ -1,5 +1,5 @@
 ## Recurrent Neural Network-based Prediction of the Location of O-GlcNAcylation Sites in Mammalian Proteins
-These are the datasets and model files associated with the publication [Recurrent Neural Network-based Prediction of the Location of O-GlcNAcylation Sites in Mammalian Proteins]. This work uses primarily RNN models to predict the presence of O-GlcNAcylation sites.
+These are the datasets and model files associated with the publication [Recurrent Neural Network-based Prediction of O-GlcNAcylation Sites in Mammalian Proteins](https://doi.org/10.1101/2023.08.24.554563). This work uses primarily RNN models to predict the presence of O-GlcNAcylation sites.
 The models were trained on multiple sources of literature data on protein O-GlcNAcylation based on human-selected descriptors (v1 of the datasets) or protein sequences (v3 and v5 of the datasets).<br>
 
 ### Reproducing the models and plots
