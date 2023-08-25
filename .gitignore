@@ -9,7 +9,8 @@
 *.ods
 *.png
 *.tiff
-Conflicts*.csv
+*.csv
+*.docx
 
 # Folders
 __pycache__/
