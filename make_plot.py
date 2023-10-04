@@ -81,6 +81,15 @@ def main(data_version):
         plt.plot(100, 1.29, 's', label = 'No model')
 
     elif data_version == 'v5':
+        # Plotting - YoY
+        x_values = [100.0, 96.21, 72.74, 48.30, 28.19, 13.59,  4.22,  0.26]
+        y_values = [ 2.43,  2.50,  3.12,  4.18,  5.69,  8.08, 11.98, 18.56]
+        labels = [ '0.12', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8']
+        yoy_line = plt.plot(x_values, y_values, '-', label = 'YinOYang')
+        for idx in range(len(labels)):
+            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = yoy_line[0].get_color())
+            my_label.set_bbox(bbox_dict)
+
         # Plotting - Our RNN-75; window size = 5
         x_values = [85.08, 75.7 , 66.93, 59.09, 51.72, 45.31, 38.69, 34.43, 32.46, 30.24, 29.13, 28.02, 26.91, 26.02, 24.55, 23.3 , 21.44, 19.43, 15.46,  9.16,  4.15]
         y_values = [ 3.21,  3.73,  4.45,  5.35,  6.46,  7.8 ,  9.35, 10.79, 11.54, 12.18, 12.86, 13.34, 13.71, 14.25, 14.52, 15.14, 16.2 , 17.11, 19.62, 22.7 , 26.79]
