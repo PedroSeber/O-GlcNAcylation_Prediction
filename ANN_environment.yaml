@@ -1,6 +1,7 @@
 name: oglcnacpred
 channels:
   - nvidia
+  - conda-forge
   - pytorch-nightly
   - defaults
 dependencies:
@@ -22,10 +23,12 @@ dependencies:
   - brotli-bin=1.0.9=h5eee18b_7
   - brotlipy=0.7.0=py311h9bf148f_1002
   - bzip2=1.0.8=h7b6447c_0
-  - ca-certificates=2023.01.10=h06a4308_0
-  - certifi=2023.5.7=py311h06a4308_0
+  - ca-certificates=2023.7.22=hbcca054_0
+  - certifi=2023.7.22=pyhd8ed1ab_0
   - cffi=1.15.1=py311h9bf148f_3
   - charset-normalizer=2.0.4=pyhd3eb1b0_0
+  - cloudpickle=2.2.1=pyhd8ed1ab_0
+  - colorama=0.4.6=pyhd8ed1ab_0
   - comm=0.1.2=py311h06a4308_0
   - contourpy=1.0.5=py311hdb19cb5_0
   - cryptography=38.0.4=py311h46ebde7_0
@@ -124,6 +127,7 @@ dependencies:
   - libxkbcommon=1.0.1=h5eee18b_1
   - libxml2=2.10.3=hcbfbd50_0
   - libxslt=1.1.37=h2085143_0
+  - llvmlite=0.41.0=py311he621ea3_0
   - lxml=4.9.2=py311h5eee18b_0
   - lz4-c=1.9.4=h6a678d5_0
   - markupsafe=2.1.1=py311h5eee18b_0
@@ -147,15 +151,16 @@ dependencies:
   - nest-asyncio=1.5.6=py311h06a4308_0
   - nettle=3.7.3=hbbd107a_1
   - networkx=2.8.4=py311h06a4308_1
-  - notebook=6.5.4=py311h06a4308_0
+  - notebook=6.5.2=pyha770c72_0
   - notebook-shim=0.2.2=py311h06a4308_0
   - nspr=4.33=h295c915_0
   - nss=3.74=h0370c37_0
+  - numba=0.58.0=py311ha02d727_0
   - numexpr=2.8.4=py311h802d673_0
   - numpy=1.24.3=py311hc206e33_0
   - numpy-base=1.24.3=py311hfd5febd_0
   - openh264=2.1.1=h4ff587b_0
-  - openssl=1.1.1t=h7f8727e_0
+  - openssl=1.1.1w=h7f8727e_0
   - packaging=22.0=py311_0
   - pandas=1.5.3=py311hba01205_0
   - pandocfilters=1.5.0=pyhd3eb1b0_0
@@ -204,11 +209,13 @@ dependencies:
   - setuptools=66.0.0=py311h06a4308_0
   - sip=6.6.2=py311h6a678d5_0
   - six=1.16.0=pyhd3eb1b0_1
+  - slicer=0.0.7=pyhd8ed1ab_0
   - sniffio=1.2.0=py311h06a4308_1
   - soupsieve=2.4=py311h06a4308_0
   - sqlite=3.41.2=h5eee18b_0
   - stack_data=0.2.0=pyhd3eb1b0_0
   - sympy=1.11.1=py311h06a4308_0
+  - tbb=2021.8.0=hdb19cb5_0
   - terminado=0.17.1=py311h06a4308_0
   - threadpoolctl=2.2.0=pyh0d69192_0
   - tinycss2=1.2.1=py311h06a4308_0
@@ -219,6 +226,7 @@ dependencies:
   - torchtriton=2.1.0+7d1a95b046=py311
   - torchvision=0.16.0.dev20230516=py311_cu121
   - tornado=6.2=py311h5eee18b_0
+  - tqdm=4.66.1=pyhd8ed1ab_0
   - traitlets=5.7.1=py311h06a4308_0
   - typing-extensions=4.5.0=py311h06a4308_0
   - typing_extensions=4.5.0=py311h06a4308_0
@@ -235,4 +243,6 @@ dependencies:
   - zeromq=4.3.4=h2531618_0
   - zlib=1.2.13=h5eee18b_0
   - zstd=1.5.5=hc292b87_0
+  - pip:
+      - shap==0.43.0
 prefix: /home/thispc/miniconda3/envs/oglcnacpred
