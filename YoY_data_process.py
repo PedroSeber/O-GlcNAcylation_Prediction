@@ -79,10 +79,10 @@ def process_results(data_version):
         real_data = pd.DataFrame(real_data)
         cutoff = np.concatenate( ([0.12], np.linspace(0.2, 0.8, 7)) ) # No points with a threshold < 0.12 or > 0.85
     # Setup and helper variables
-    numerical_yoy_position = np.array(thresholds.iloc[:, 1], dtype = np.uint16)
+    numerical_yoy_position = np.array(thresholds.iloc[:, 1], dtype = np.uint32) # Length up to 4,294,967,296
     numerical_thresholds = np.array(thresholds.iloc[:, 2], dtype = float)
     pos_idxs = set()
-    true_pos = np.zeros(cutoff.shape, dtype = np.uint16)
+    true_pos = np.zeros(cutoff.shape, dtype = np.uint32) # Up to 4,294,967,296 - 1 positive samples
     false_neg = np.zeros_like(true_pos)
     # Going through data that are real positives, but can be labeled as negative or positive by the model
     for idx in range(real_data.shape[0]):
@@ -99,10 +99,21 @@ def process_results(data_version):
     true_neg = np.sum(numerical_thresholds[neg_idxs, None] < cutoff, axis = 0)
     x_unrounded = true_pos / (true_pos + false_neg)*100
     x_values = [round(elem, 2) for elem in x_unrounded]
+    print(f'x_values = {x_values}')
     y_unrounded = true_pos / (true_pos + false_pos)*100
     y_values = [round(elem, 2) for elem in y_unrounded]
-    print(f'x_values: {x_values}')
-    print(f'y_values: {y_values}')
+    print(f'y_values = {y_values}')
+    f1 = 2*(1/x_unrounded + 1/y_unrounded)**-1
+    f1 = [round(elem, 2) for elem in f1]
+    print(f'f1 = {f1}')
+    # The denominator becomes pretty large as the number of samples increases. The v5 dataset gets too close to overflowing and leads to incorrect MCC values if not converted to float
+    TP = np.array(true_pos, dtype = float)
+    FP = np.array(false_pos, dtype = float)
+    TN = np.array(true_neg, dtype = float)
+    FN = np.array(false_neg, dtype = float)
+    MCC = (TP*TN - FP*FN) / np.sqrt((TP+FP) * (TP+FN) * (TN+FP) * (TN+FN))*100
+    MCC = [round(elem, 2) for elem in MCC]
+    print(f'MCC = {MCC}')
 
 def truncate_intermediate_results(data_version = 'v5'):
     """
