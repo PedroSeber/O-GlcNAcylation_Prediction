@@ -5,12 +5,10 @@ Also prepares sequence data for LSTM as needed
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder, LabelBinarizer
-from sklearn.model_selection import train_test_split
-import pdb
 
 def preprocess_data(filename, window_size = 10):
     """
-    Transforms the data for model training with ANN_train.py or ANN_train.ipynb
+    Transforms the data for model training with ANN_train.py
 
     Parameters
     ----------
@@ -93,18 +91,6 @@ def preprocess_data(filename, window_size = 10):
             seq_data[idx] = seq_data[idx].translate({ord(i): None for i in '"'}) # str.translate replaces the characters on the right of the for (in this case, a quote character) with None
         OHE_seq_data = OHE_for_LSTM(seq_data.values.squeeze())
         np.save('OH_LSTM_data_v2.npy', OHE_seq_data) # np.save instead of csv because this is a 3D array
-        """# Generating the phosphorylation data [Old, there's not much correlation between sites]
-        from phosphorylation_dict import phospho_dict
-        phospho_bool = np.zeros(data.shape[0], dtype = np.uint8)
-        for idx in range(data.shape[0]):
-            prot_ID = data.iat[idx, 0]
-            if prot_ID == 'O95832': # TEMP: phospho_dict is not complete yet
-                break
-            AA_idx = data.iat[idx, 1] + 1 # +1 because Python is 0-indexed, while Phophosite's DB is 1-indexed
-            if np.any(np.abs(phospho_dict[prot_ID] - AA_idx) <= 10):
-                phospho_bool[idx] = 1
-        one_hot_data.insert(one_hot_data.shape[1]-1, 'nearby_phosphorylation', phospho_bool)
-        one_hot_data.to_csv('OH_data_v2_phospho.csv', index = False)"""
     elif filename in {'all_sites_fixed.csv', 'all_sites_PS.csv', 'all_sites_PS_Uniprot.csv'}:
         positive_sites = set()
         for idx in range(data.shape[0]):
@@ -131,7 +117,7 @@ def preprocess_data(filename, window_size = 10):
         else:
             data_version = f'v4{"-Uniprot"*("Uniprot" in filename)}' # v4 or v4-Uniprot
         np.save(f'OH_LSTM_data_{data_version}.npy', OHE_seq_data) # np.save instead of csv because this is a 3D array
-        y_boolean = pd.Series(y_boolean, name = 'is_glycosylated')
+        y_boolean = pd.Series(y_boolean, name = 'is_O-GlcNAcylated')
         y_boolean.to_csv(f'OH_data_{data_version}.csv', index = False)
     elif filename == 'OVSlab_allSpecies_O-GlcNAcome_PS.csv':
         #mammalian_species = {'Camelus dromedarius', 'Rattus norvegicus', 'Mus musculus', 'Chlorocebus aethiops', 'Oryctolagus cuniculus', 'Macaca fascicularis', 'Ovis aries', 'Rattus sp', 'Chlorocebus sabaeus',
@@ -157,7 +143,7 @@ def preprocess_data(filename, window_size = 10):
                 if letter in {'T', 'S'}: # All sites are S or T
                     sequence = get_nearby_AA(data.iat[idx, 3], letter_idx, window_size)
                     positive_bool = (data.iat[idx, 0], letter_idx+1) in positive_sites
-                    if (sequence, positive_bool) not in already_included and (sequence, not(positive_bool)) not in already_included: # Equivalent to just checking whether the sequence has been included
+                    if (sequence, positive_bool) not in already_included and (sequence, not(positive_bool)) not in already_included: # Equivalent to just checking whether the sequence has been included - proceed only if the sequence is not there as a positive entry and not there as a negative entry
                         seq_data.append(sequence)
                         y_boolean.append(int(positive_bool)) # Ints allow one to easily obtain the sum and mean of the data
                         if window_size == 5 and 'seq_data_10' in locals(): # Also preparing seq data for larger window sizes
@@ -166,13 +152,13 @@ def preprocess_data(filename, window_size = 10):
                             seq_data_20.append(get_nearby_AA(data.iat[idx, 3], letter_idx, 20))
                             seq_data_25.append(get_nearby_AA(data.iat[idx, 3], letter_idx, 25))
                         already_included.add((sequence, positive_bool))
-                    elif (sequence, not(positive_bool)) in already_included: # Conflict: the sequence has already been included, but with the opposite glycosylation status
+                    elif (sequence, not(positive_bool)) in already_included: # Conflict: the sequence has already been included, but with the opposite O-GlcNAcylation status
                         conflict_seqs.add( (sequence, int(not(positive_bool))) )
         print('One-hot encoding the sequence data' + ' '*15)
         OHE_seq_data = OHE_for_LSTM(np.array(seq_data), window_size)
-        if window_size == 5:
+        if window_size == 5 and 'OHE_seq_data' in locals(): # 'OHE_seq_data' won't be in locals if you comment the above line to make the motif testing go faster
             np.save('OH_LSTM_data_v5_5-window.npy', OHE_seq_data) # np.save instead of csv because this is a 3D array
-        else: # Directly using a larger window_size adds entries to the dataset. These entries have identical amino acids between -5 and 5, but are unique (at least one different amino acid between -X and X)
+        elif 'OHE_seq_data' in locals(): # Directly using a larger window_size adds entries to the dataset. These entries have identical amino acids between -5 and 5, but are unique (at least one different amino acid between -X and X)
             np.save(f'OH_LSTM_data_v5_{window_size}-window_expanded.npy', OHE_seq_data) # np.save instead of csv because this is a 3D array
         if window_size == 5 and 'seq_data_10' in locals():
             print('One-hot encoding sequence data for larger windows' + ' '*10)
@@ -184,35 +170,48 @@ def preprocess_data(filename, window_size = 10):
             np.save('OH_LSTM_data_v5_20-window.npy', OHE_seq_data_20) # np.save instead of csv because this is a 3D array
             OHE_seq_data_25 = OHE_for_LSTM(np.array(seq_data_20), 25)
             np.save('OH_LSTM_data_v5_25-window.npy', OHE_seq_data_25) # np.save instead of csv because this is a 3D array
-        # Setting conflict sequences as positive, since they're glycosylated in at least one site
+        # Setting conflict sequences as positive, since they're O-GlcNAcylated in at least one site
         for elem in conflict_seqs:
             if elem[1] == 0:
                 temp_idx = seq_data.index(elem[0])
                 y_boolean[temp_idx] = 1
-        y_boolean = pd.Series(y_boolean, name = 'is_glycosylated')
+        y_boolean = pd.Series(y_boolean, name = 'is_O-GlcNAcylated')
         y_boolean.to_csv(f'OH_data_v5_{window_size}-window.csv', index = False)
-        # W-F et al. motif analysis (page 3 of their paper) - should be done once per minimum threshold (line 204). Run this file with window_size == 3
+        # W-F et al. motif analysis (page 3 of their paper) - should be done once by running this file with window_size == 3
         if window_size == 3:
-            follows_motif = np.zeros_like(y_boolean, dtype = bool)
+            follows_motif = np.zeros_like(y_boolean, dtype = np.uint8) # A score that shows how many sites in a sequence follow the motif
             for idx, seq in enumerate(seq_data):
                 if len(seq) < 6:
                     n_follow = 0
                 elif seq[window_size] == 'S':
                     n_follow = (seq[window_size-3]=='P') + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) + ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) + (seq[window_size+2]=='A')
                 elif seq[window_size] == 'T':
-                    n_follow = ((seq[window_size-3]=='P')|(seq[window_size-3]=='T')) + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) + ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) + ((seq[window_size+2]=='A')|(seq[window_size+2]=='T'))
-                follows_motif[idx] = n_follow >= 5 # Change this threshold as needed
+                    n_follow = ((seq[window_size-3]=='P')|(seq[window_size-3]=='T')) + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) + ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) + \
+                               ((seq[window_size+2]=='A')|(seq[window_size+2]=='T'))
+                follows_motif[idx] = n_follow
+        if 'follows_motif' in locals():
+            min_cutoff = 0 if follows_motif.min() < 0 else 1
+            cutoffs = range(min_cutoff, follows_motif.max() + 1)
             y_boolean = pd.Series(y_boolean, dtype = bool) # Converting to bool to avoid weirdness with negation. Original is int for convenience
-            motif_TP = (y_boolean&follows_motif).sum()
-            motif_TN = (~y_boolean&~follows_motif).sum()
-            motif_FP = (~y_boolean&follows_motif).sum()
-            motif_FN = (y_boolean&~follows_motif).sum()
+            motif_TP = np.zeros(cutoffs.stop - cutoffs.start, dtype = np.uint32)
+            motif_TN = np.zeros_like(motif_TP)
+            motif_FP = np.zeros_like(motif_TP)
+            motif_FN = np.zeros_like(motif_TP)
+            for idx, cutoff in enumerate(cutoffs):
+                motif_TP[idx] = (y_boolean&(follows_motif >= cutoff)).sum()
+                motif_TN[idx] = (~y_boolean&~(follows_motif >= cutoff)).sum()
+                motif_FP[idx] = (~y_boolean&(follows_motif >= cutoff)).sum()
+                motif_FN[idx] = (y_boolean&~(follows_motif >= cutoff)).sum()
             rec = motif_TP / (motif_TP + motif_FN)
             pre = motif_TP / (motif_TP + motif_FP)
             f1 = 2/(1/rec + 1/pre)
-            print(f'W-F et al. Motif: Rec = {rec*100:.2f}, Pre = {pre*100:.2f}, F1 = {f1*100:.2f}, TP = {motif_TP}, TP + FP (what is marked as positive) = {motif_TP + motif_FP}' + ' '*10)
-        conflict_seqs = pd.DataFrame(tuple(conflict_seqs), columns = ['Conflicting sequence', 'O-Glyco status in the processed data']) # tuple() because Pandas doesn't convert sets to Series
-        conflict_seqs.to_csv(f'Conflicts_data_v5_window-size_{window_size}.csv', index = False)
+            TP, TN, FP, FN = motif_TP.astype(float), motif_TN.astype(float), motif_FP.astype(float), motif_FN.astype(float)
+            MCC = (TP*TN - FP*FN) / np.sqrt((TP+FP) * (TP+FN) * (TN+FP) * (TN+FN))
+            print(f'Motif analysis: Cutoffs = {list(cutoffs)}, TP = {motif_TP}, TP + FP (what is marked as positive) = {motif_TP + motif_FP}' + ' '*10)
+            print(f'Rec = {np.round(rec*100, 2)}')
+            print(f'Pre = {np.round(pre*100, 2)}')
+            print(f'F1 = {np.round(f1*100, 2)}')
+            print(f'MCC = {np.round(MCC*100, 2)}')
         print(f'Total sites: {len(seq_data):,}' + ' '*30)
         print(f'Positive sites: {sum(y_boolean):,} ({np.mean(y_boolean)*100:.2f}%)')
 
@@ -248,7 +247,7 @@ def get_nearby_AA(sequence, letter_idx, window = 10):
 if __name__ == '__main__':
     # Input setup
     import argparse
-    parser = argparse.ArgumentParser(description = 'Preprocess the original or modified dataset for O-glycosylation prediction')
+    parser = argparse.ArgumentParser(description = 'Preprocess the original or modified dataset for O-GlcNAcylation prediction')
     parser.add_argument('filename', type = str, nargs = 1,
         help = 'The name of the raw dataset. Must be "file_for_ML.csv", "file_for_ML_v2.csv", "all_sites_fixed.csv", "all_sites_PS.csv", "all_sites_PS_Uniprot.csv", or "OVSlab_allSpecies_O-GlcNAcome_PS.csv"')
     parser.add_argument('-ws', '--window_size', type = int, nargs = 1, metavar = 10, default = [10],
