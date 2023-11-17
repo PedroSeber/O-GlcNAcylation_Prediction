@@ -57,6 +57,9 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
     # Pre-declaring paths for convenience (to save / load results)
     if lstm_size:
         working_dir = f'RNN_{lstm_size}_results_{data_version}-data{window_size_path}'
+        #nested_idx = 3 # Vary from 0 to 3 for a 5-fold nested validation (the other fold is equivalent to not using nested validation). Comment out to not use nested validation - not using nested should be the default
+        if 'nested_idx' in locals():
+            working_dir = f'RNN_{lstm_size}_results_{data_version}-data{window_size_path}_nested{nested_idx+1}'
     else:
         working_dir = f'ANN_results_{data_version}-data'
     if not isdir(working_dir):
@@ -67,6 +70,12 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
     # Data splitting - 80% Cross Validation, 20% Test
     if lstm_size:
         cv_data, test_data, cv_lstm_data, test_lstm_data = train_test_split(data, lstm_data, test_size = 0.2, random_state = 123)
+        if 'nested_idx' in locals(): # Nested validation - can be ignored in the majority of scenarios
+            idx_for_nested = np.zeros(cv_data.shape[0], dtype = bool)
+            idx_for_nested[nested_idx*111634 : (nested_idx+1)*111634] = True
+            temp_test_data, temp_test_lstm_data = cv_data[idx_for_nested], cv_lstm_data[idx_for_nested] # Create new test set under a temporary name
+            cv_data, cv_lstm_data = torch.concatenate((cv_data[~idx_for_nested], test_data)), torch.concatenate((cv_lstm_data[~idx_for_nested], test_lstm_data))
+            test_data, test_lstm_data = temp_test_data, temp_test_lstm_data # Rename the new test set back to the usual name
     else:
         cv_data, test_data = train_test_split(data, test_size = 0.2, random_state = 123)
 
@@ -79,8 +88,8 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
         #[(myshape_X, myshape_X*11), (myshape_X*11, 2)],
         #[(myshape_X, myshape_X*10), (myshape_X*10, 2)],
         #[(myshape_X, myshape_X*9), (myshape_X*9, 2)],
-        ###[(myshape_X, myshape_X*8), (myshape_X*8, 2)],
-        ###[(myshape_X, myshape_X*7), (myshape_X*7, 2)],
+        #[(myshape_X, myshape_X*8), (myshape_X*8, 2)],
+        #[(myshape_X, myshape_X*7), (myshape_X*7, 2)],
         #[(myshape_X, myshape_X*6), (myshape_X*6, 2)],
         #[(myshape_X, myshape_X*5), (myshape_X*5, 2)],
         #[(myshape_X, myshape_X*4), (myshape_X*4, 2)],
@@ -188,17 +197,13 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
         train_y = torch.empty((len(train_loader.dataset)), dtype = torch.long)
         for idx, data in enumerate(train_loader):
             if lstm_size:
-                X, y, lstm = data
-                lstm = lstm.cuda()
+                _, y, X = data
             else:
                 X, y = data
-                lstm = None
             X = X.cuda()
-            pred = model(X, lstm).cpu().detach()
+            pred = model(X).cpu().detach()
             train_pred[idx*batch_size:(idx*batch_size)+len(pred), :] = pred
             train_y[idx*batch_size:(idx*batch_size)+len(y)] = y
-        # Renormalizing the train_pred
-        train_pred = (train_pred.T / train_pred.sum(axis=1)).T
         # Train confusion matrix
         train_pred_CM = train_pred[:, 1] >= threshold
         CM = confusion_matrix(train_y, train_pred_CM)
@@ -217,19 +222,15 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
         test_y = torch.empty((len(test_loader.dataset)), dtype = torch.long)
         for idx, data in enumerate(test_loader):
             if lstm_size:
-                X, y, lstm = data
-                lstm = lstm.cuda()
+                _, y, X = data
             else:
                 X, y = data
-                lstm = None
             X = X.cuda()
-            pred = model(X, lstm).cpu().detach()
+            pred = model(X).cpu().detach()
             test_pred[idx*batch_size:(idx*batch_size)+len(pred), :] = pred
             test_y[idx*batch_size:(idx*batch_size)+len(y)] = y
         test_loss = my_loss(test_pred.cuda(), test_y.cuda())
         print(f'The test loss was {test_loss:.3f}')
-        # Renormalizing the test_pred
-        test_pred = (test_pred.T / test_pred.sum(axis=1)).T
         # Test confusion matrix
         test_pred_CM = test_pred[:, 1] >= threshold
         CM = confusion_matrix(test_y, test_pred_CM)
@@ -237,14 +238,16 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
             rec = CM[1,1]/(CM[1,1]+CM[1,0])
             pre = CM[1,1]/(CM[1,1]+CM[0,1])
             f1 = 2/(1/rec + 1/pre)
+            MCC = (CM[1,1]*CM[0,0] - CM[0,1]*CM[1,0])/np.sqrt((CM[1,1]+CM[0,1]) * (CM[1,1]+CM[1,0]) * (CM[0,0]+CM[0,1]) * (CM[0,0]+CM[1,0]))
         else:
-            rec, pre, f1 = 0, 0, 0
+            rec, pre, f1, MCC = 0, 0, 0, 0
         print(f'The test recall was {rec*100:.2f}%')
         print(f'The test precision was {pre*100:.2f}%')
         print(f'The test F1 score was {f1*100:.2f}%')
+        print(f'The test MCC was {MCC*100:.2f}%')
         print(CM)
 
-    # Creating the full training Dataset / DataLoader
+    # Creating the full training and testing Datasets / DataLoaders
     if lstm_size:
         train_dataset = MyDataset(cv_data, cv_lstm_data)
         test_dataset = MyDataset(test_data, test_lstm_data)
@@ -354,14 +357,15 @@ class SequenceMLP(torch.nn.Module):
         self.model = torch.nn.Sequential(OrderedDict(mylist))
         self.sigmoid = torch.nn.Sigmoid()
 
-    def forward(self, x, lstm_data = None):
+    def forward(self, x):
         if 'lstm' in dir(self):
-            _, (ht, _) = self.lstm(lstm_data) # Passing only the seq data through the LSTM
+            _, (ht, _) = self.lstm(x)
             to_MLP = (ht[0] + ht[1]) / 2 # Average between forward and backward
             out = self.model(to_MLP)
         else:
             out = self.model(x)
         probs = self.sigmoid(out)
+        probs = (probs.T / probs.sum(axis=1)).T # Normalizing the probs to 1
         return probs
 
 class CosineScheduler: # Code obtained from https://d2l.ai/chapter_optimization/lr-scheduler.html
@@ -397,14 +401,12 @@ def loop_model(model, optimizer, loader, loss_function, epoch, batch_size, lstm_
     batch_losses = []
     for idx, data in enumerate(loader):
         if lstm_size:
-            X, y, lstm = data
-            lstm = lstm.cuda()
+            _, y, X = data
         else:
             X, y = data
-            lstm = None
         X = X.cuda()
         y = y.cuda()
-        pred = model(X, lstm)
+        pred = model(X)
         loss = loss_function(pred, y)
         batch_losses.append(loss.item()) # Saving losses
         # Backpropagation
