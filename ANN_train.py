@@ -286,7 +286,7 @@ def train_CV_complete(weight_hyperparam, activ_fun_list = ['relu'], lstm_size = 
             mydict = torch.load(f'{working_dir}/{best_model_file}')
             model.load_state_dict(mydict)
         except FileNotFoundError: # Retraining the model with the full training set
-            optimizer = torch.optim.Adam(model.parameters(), lr = best_LR)
+            optimizer = torch.optim.AdamW(model.parameters(), lr = best_LR, weight_decay = 1e-2)
             # First 10 epochs involve linearly increasing the LR, then it decreases in a cosine-like way to final_lr until epoch n_epochs-10
             scheduler = CosineScheduler(n_epochs-10, base_lr = best_LR, warmup_steps = 10, final_lr = best_LR/15)
             # Retrain
@@ -446,4 +446,4 @@ if __name__ == '__main__':
     parser.add_argument('-bs', '--batch_size', type = int, nargs = 1, metavar = 32, default = [32], help='The batch size used in each epoch')
     myargs = parser.parse_args()
     for this_weight in myargs.weight:
-        train_CV_complete([1, this_weight], myargs.activ_fun_list, myargs.lstm_size[0], myargs.data_version[0], myargs.window_size[0])
+        train_CV_complete([1, this_weight], myargs.activ_fun_list, myargs.lstm_size[0], myargs.data_version[0], myargs.window_size[0], myargs.batch_size[0])
