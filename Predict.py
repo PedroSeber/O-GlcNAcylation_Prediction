@@ -4,9 +4,10 @@ import torch
 from torch.utils.data import DataLoader
 from os.path import join as osjoin
 from os.path import exists as osexists
-from ANN_train import SequenceMLP
-from one_hot_encode_csv import OHE_for_LSTM
+from os import listdir
 from sklearn.model_selection import train_test_split
+from collections import OrderedDict
+from sklearn.preprocessing import LabelBinarizer
 
 def predict_OGlcNAcylation(sequence, threshold = 0.5, batch_size = 2048, shapley = False):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -19,13 +20,19 @@ def predict_OGlcNAcylation(sequence, threshold = 0.5, batch_size = 2048, shapley
     seq_dataloader = DataLoader(OHE_seq, batch_size, shuffle = False)
 
     # Model preparation
-    mydict = torch.load(osjoin('RNN-225_20-window_dict.pt'), map_location = torch.device(device))
+    if 'RNN-[600,75]_20-window_dict.pt' in listdir():
+        mydict = torch.load(osjoin('RNN-[600,75]_20-window_dict.pt'), map_location = torch.device(device)) # New model with higher performance from "Predicting O-GlcNAcylation sites in mammalian proteins with transformers and RNNs trained with a new loss function" work
+    else:
+        mydict = torch.load(osjoin('RNN-225_20-window_dict.pt'), map_location = torch.device(device)) # Old model from "Recurrent Neural Network-based Prediction of O-GlcNAcylation Sites in Mammalian Proteins" work; kept for compatibility
     layers = []
     for array_name, array in mydict.items(): # Getting the size of the model from mydict
         if 'weight' in array_name:
             layers.append(tuple(array.T.shape))
     # Building the model
-    model = SequenceMLP(layers[4:], 'relu', layers[1][0])
+    if len(layers) == 10: # Model with two RNN cells
+        model = SequenceMLP(layers[8:], 'relu', [layers[1][0], layers[5][0]])
+    else: # Model with one RNN cell
+        model = SequenceMLP(layers[4:], 'relu', layers[1][0])
     model.load_state_dict(mydict)
     model.to(device)
     model.eval()
@@ -83,6 +90,79 @@ def _make_background_shap(bg_size = 4000):
     bg_idx = np.array(bg_idx)
     background = X_data[bg_idx]
     return background
+
+# MLP or LSTM+MLP model
+class SequenceMLP(torch.nn.Module):
+    def __init__(self, layers, activ_fun = 'relu', lstm_hidden_size = 0):
+        super(SequenceMLP, self).__init__()
+        # Setup to convert string to activation function
+        if activ_fun == 'relu':
+            torch_activ_fun = torch.nn.ReLU()
+        elif activ_fun == 'tanh':
+            torch_activ_fun = torch.nn.Tanh()
+        elif activ_fun == 'sigmoid':
+            torch_activ_fun = torch.nn.Sigmoid()
+        elif activ_fun == 'tanhshrink':
+            torch_activ_fun = torch.nn.Tanhshrink()
+        elif activ_fun == 'selu':
+            torch_activ_fun = torch.nn.SELU()
+        #elif activ_fun == 'attention':
+        #    torch_activ_fun = torch.nn.MultiheadAttention(myshape_X, 4)
+        else:
+            raise ValueError(f'Invalid activ_fun. You passed {activ_fun}')
+
+        # LSTM cell
+        if isinstance(lstm_hidden_size, int) and lstm_hidden_size:
+            self.lstm = [torch.nn.LSTM(20, lstm_hidden_size, batch_first = True, bidirectional = True).cuda()] # Need to send to device because the cells are in a list
+        elif isinstance(lstm_hidden_size, (list, tuple)):
+            self.lstm = []
+            for idx, size in enumerate(lstm_hidden_size):
+                if idx == 0:
+                    self.lstm.append(torch.nn.LSTM(20, size, batch_first = True, bidirectional = True).cuda()) # Need to send to device because the cells are in a list
+                else:
+                    self.lstm.append(torch.nn.LSTM(lstm_hidden_size[idx-1], size, batch_first = True, bidirectional = True).cuda()) # Need to send to device because the cells are in a list
+        self.lstm = torch.nn.ModuleList(self.lstm) # Need to transform list into a ModuleList so PyTorch updates and interacts with the weights properly
+        # Transforming layers list into OrderedDict with layers + activation
+        mylist = list()
+        for idx, elem in enumerate(layers):
+            mylist.append((f'Linear{idx}', torch.nn.Linear(layers[idx][0], layers[idx][1]) ))
+            if idx < len(layers)-1:
+                mylist.append((f'{activ_fun}{idx}', torch_activ_fun))
+        # OrderedDict into NN
+        self.model = torch.nn.Sequential(OrderedDict(mylist))
+        self.sigmoid = torch.nn.Sigmoid()
+
+    def forward(self, x):
+        if 'lstm' in dir(self):
+            for cell in self.lstm:
+                x, (ht, _) = cell(x)
+                x = (x[:, :, :x.shape[2]//2] + x[:, :, x.shape[2]//2:]) / 2 # Average between forward and backward
+            to_MLP = (ht[0] + ht[1]) / 2 # Average between forward and backward
+            out = self.model(to_MLP)
+        else:
+            out = self.model(x)
+        probs = self.sigmoid(out)
+        probs = (probs.T / probs.sum(axis=1)).T # Normalizing the probs to 1
+        return probs
+
+def OHE_for_LSTM(sequences, window = 10):
+    lb = LabelBinarizer()
+    _ = lb.fit(('A', 'R', 'N', 'D', 'C', 'Q', 'E', 'G', 'H', 'I', 'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V'))
+    sequence_size = 2*window + 1 # window AAs before + central AA + window AAs after
+    X = np.empty(( sequences.shape[0], sequence_size, 20 ), dtype = np.uint8) # sequences.shape[0] AA sequences, 2*window + 1 AAs per protein sequence, 20 nucleotides in one-hot enconding per site
+
+    for idx, elem in enumerate(sequences):
+        if not(idx % 5000):
+            print(f'OHE current idx: {idx:6,}/{sequences.shape[0]-1:,} (Updated every 5000 idx)', end = '\r')
+        # list(elem) separates the AAs into one list with 2*window + 1 elements [instead of a single string]
+        # The lb.transform() then creates a (2*window + 1)x20 array
+        temp = lb.transform(list(elem))
+        # Some sequences have less than 2*window + 1 elements because they are close to the beginning or end of the protein
+        if temp.shape[0] < sequence_size:
+            temp = np.concatenate([temp, np.zeros([sequence_size - temp.shape[0], 20]) ])
+        X[idx, :, :] = temp
+
+    return X
 
 if __name__ == '__main__':
     # Input setup
