@@ -63,10 +63,11 @@ def main(data_version):
 
         # Plotting - Our MLP v2 data
         x_values = [73.68,  67.54,  57.89,  45.61,  38.60,  31.58,  21.93,  14.91, 14.91, 14.91,  14.91, 12.28, 12.28, 12.28, 12.28, 12.28,     12.28, 11.40, 11.40,  09.65, 09.65, 09.65, 09.65,    09.65,     08.77] # Recall
+        x_values = [73.68,  67.54,  57.89,  45.61,  38.60,  31.58,  21.48,  10.13, 10.13, 10.13,  10.13,  7.21,  7.21,  7.21,  7.21,  7.21,      7.21,  6.83,  6.83,   4.67,  4.67,  4.67,  4.67,     4.67,      3.91]
         y_values = [01.59,  01.80,  02.07,  02.29,  03.02,  04.06,  05.49,  07.17, 13.18, 17.71,  20.73, 21.54, 29.79, 35.00, 36.84, 37.84,     38.89, 39.39, 40.62,  44.00, 47.83, 57.89, 73.33,    78.57,     83.33] # Precision
         labels = ['1e-10', '1e-9', '1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3',    '',    '', '0.05', '0.1',    '',    '',    '',    '', '0.7-0.8',    '', '0.9', '0.95',    '',    '',    '', '0.9999', '0.99995']
         #labels = ['1e-10', '1e-9', '1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.03', '0.05', '0.1', '0.2', '0.3', '0.35-0.45', '0.5-0.65', '0.7-0.8', '0.85', '0.9', '0.95', '0.97', '0.99', '0.999', '0.9999', '0.99995']
-        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our MLP')
+        ANN_line = plt.plot(x_values, y_values, '-', label = 'Our MLP', color = '#17BECF')
         for idx in range(len(labels)):
             my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
             my_label.set_bbox(bbox_dict)
@@ -327,7 +328,7 @@ def main(data_version):
         if data_version not in {'BLANK', 'v0'}:
             ax.legend(fontsize = 22)
         plt.tight_layout()
-        plt.savefig(f'O-Gly_model_eval_F{beta}_{data_version}-data.png')
+        plt.savefig(f'O-Gly_model_eval_F{beta}_{data_version}-data.svg')
 
 if __name__ == '__main__':
     # Input setup

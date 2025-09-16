@@ -133,6 +133,7 @@ def preprocess_data(filename, window_size = 10):
             seq_data_15 = []
             seq_data_20 = []
             seq_data_25 = []
+            seq_data_30 = []
         y_boolean = []
         already_included = set()
         conflict_seqs = set()
@@ -151,6 +152,7 @@ def preprocess_data(filename, window_size = 10):
                             seq_data_15.append(get_nearby_AA(data.iat[idx, 3], letter_idx, 15))
                             seq_data_20.append(get_nearby_AA(data.iat[idx, 3], letter_idx, 20))
                             seq_data_25.append(get_nearby_AA(data.iat[idx, 3], letter_idx, 25))
+                            seq_data_30.append(get_nearby_AA(data.iat[idx, 3], letter_idx, 30))
                         already_included.add((sequence, positive_bool))
                     elif (sequence, not(positive_bool)) in already_included: # Conflict: the sequence has already been included, but with the opposite O-GlcNAcylation status
                         conflict_seqs.add( (sequence, int(not(positive_bool))) )
@@ -168,8 +170,10 @@ def preprocess_data(filename, window_size = 10):
             np.save('OH_LSTM_data_v5_15-window.npy', OHE_seq_data_15) # np.save instead of csv because this is a 3D array
             OHE_seq_data_20 = OHE_for_LSTM(np.array(seq_data_20), 20)
             np.save('OH_LSTM_data_v5_20-window.npy', OHE_seq_data_20) # np.save instead of csv because this is a 3D array
-            OHE_seq_data_25 = OHE_for_LSTM(np.array(seq_data_20), 25)
+            OHE_seq_data_25 = OHE_for_LSTM(np.array(seq_data_25), 25)
             np.save('OH_LSTM_data_v5_25-window.npy', OHE_seq_data_25) # np.save instead of csv because this is a 3D array
+            OHE_seq_data_30 = OHE_for_LSTM(np.array(seq_data_30), 30)
+            np.save('OH_LSTM_data_v5_30-window.npy', OHE_seq_data_30) # np.save instead of csv because this is a 3D array
         # Setting conflict sequences as positive, since they're O-GlcNAcylated in at least one site
         for elem in conflict_seqs:
             if elem[1] == 0:
@@ -177,41 +181,49 @@ def preprocess_data(filename, window_size = 10):
                 y_boolean[temp_idx] = 1
         y_boolean = pd.Series(y_boolean, name = 'is_O-GlcNAcylated')
         y_boolean.to_csv(f'OH_data_v5_{window_size}-window.csv', index = False)
-        # W-F et al. motif analysis (page 3 of their paper) - should be done once by running this file with window_size == 3
+        # Motif Analysis for W-F et al. (page 3 of their paper) and Ma et al. (page 15 of their paper) - should be done once by running this file with window_size == 3
         if window_size == 3:
-            follows_motif = np.zeros_like(y_boolean, dtype = np.uint8) # A score that shows how many sites in a sequence follow the motif
+            follows_motif_WF = np.zeros_like(y_boolean, dtype = np.uint8) # A score that shows how many sites in a sequence follow the motif
+            follows_motif_Ma = np.zeros_like(y_boolean, dtype = np.uint8) # A score that shows how many sites in a sequence follow the motif
             for idx, seq in enumerate(seq_data):
                 if len(seq) < 6:
-                    n_follow = 0
+                    n_follow_WF = 0
+                    n_follow_Ma = 0
                 elif seq[window_size] == 'S':
-                    n_follow = (seq[window_size-3]=='P') + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) + ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) + (seq[window_size+2]=='A')
+                    n_follow_WF = (seq[window_size-3]=='P') + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) + ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) + (seq[window_size+2]=='A')
+                    n_follow_Ma = (seq[window_size-3]=='P') + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')|(seq[window_size-1]=='S')) + (seq[window_size+1]=='S') + \
+                                    ((seq[window_size+2]=='S')|(seq[window_size+2]=='A'))
                 elif seq[window_size] == 'T':
-                    n_follow = ((seq[window_size-3]=='P')|(seq[window_size-3]=='T')) + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) + ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) + \
+                    n_follow_WF = ((seq[window_size-3]=='P')|(seq[window_size-3]=='T')) + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')) + ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) + \
                                ((seq[window_size+2]=='A')|(seq[window_size+2]=='T'))
-                follows_motif[idx] = n_follow
-        if 'follows_motif' in locals():
-            min_cutoff = 0 if follows_motif.min() < 0 else 1
-            cutoffs = range(min_cutoff, follows_motif.max() + 1)
-            y_boolean = pd.Series(y_boolean, dtype = bool) # Converting to bool to avoid weirdness with negation. Original is int for convenience
-            motif_TP = np.zeros(cutoffs.stop - cutoffs.start, dtype = np.uint32)
-            motif_TN = np.zeros_like(motif_TP)
-            motif_FP = np.zeros_like(motif_TP)
-            motif_FN = np.zeros_like(motif_TP)
-            for idx, cutoff in enumerate(cutoffs):
-                motif_TP[idx] = (y_boolean&(follows_motif >= cutoff)).sum()
-                motif_TN[idx] = (~y_boolean&~(follows_motif >= cutoff)).sum()
-                motif_FP[idx] = (~y_boolean&(follows_motif >= cutoff)).sum()
-                motif_FN[idx] = (y_boolean&~(follows_motif >= cutoff)).sum()
-            rec = motif_TP / (motif_TP + motif_FN)
-            pre = motif_TP / (motif_TP + motif_FP)
-            f1 = 2/(1/rec + 1/pre)
-            TP, TN, FP, FN = motif_TP.astype(float), motif_TN.astype(float), motif_FP.astype(float), motif_FN.astype(float)
-            MCC = (TP*TN - FP*FN) / np.sqrt((TP+FP) * (TP+FN) * (TN+FP) * (TN+FN))
-            print(f'Motif analysis: Cutoffs = {list(cutoffs)}, TP = {motif_TP}, TP + FP (what is marked as positive) = {motif_TP + motif_FP}' + ' '*10)
-            print(f'Rec = {np.round(rec*100, 2)}')
-            print(f'Pre = {np.round(pre*100, 2)}')
-            print(f'F1 = {np.round(f1*100, 2)}')
-            print(f'MCC = {np.round(MCC*100, 2)}')
+                    n_follow_Ma = (seq[window_size-3]=='P') + (seq[window_size-2]=='P') + ((seq[window_size-1]=='V')|(seq[window_size-1]=='T')|(seq[window_size-1]=='S')) + ((seq[window_size+1]=='S')|(seq[window_size+1]=='T')) + \
+                               ((seq[window_size+2]=='A')|(seq[window_size+2]=='S'))
+                follows_motif_WF[idx] = n_follow_WF
+                follows_motif_Ma[idx] = n_follow_Ma
+        if 'follows_motif_WF' in locals():
+            for motif_name, follows_motif in (('W-F et al.', follows_motif_WF), ('Ma et al.', follows_motif_Ma)):
+                min_cutoff = 0 if follows_motif.min() < 0 else 1
+                cutoffs = range(min_cutoff, follows_motif.max() + 1)
+                y_boolean = pd.Series(y_boolean, dtype = bool) # Converting to bool to avoid weirdness with negation. Original is int for convenience
+                motif_TP = np.zeros(cutoffs.stop - cutoffs.start, dtype = np.uint32)
+                motif_TN = np.zeros_like(motif_TP)
+                motif_FP = np.zeros_like(motif_TP)
+                motif_FN = np.zeros_like(motif_TP)
+                for idx, cutoff in enumerate(cutoffs):
+                    motif_TP[idx] = (y_boolean&(follows_motif >= cutoff)).sum()
+                    motif_TN[idx] = (~y_boolean&~(follows_motif >= cutoff)).sum()
+                    motif_FP[idx] = (~y_boolean&(follows_motif >= cutoff)).sum()
+                    motif_FN[idx] = (y_boolean&~(follows_motif >= cutoff)).sum()
+                rec = motif_TP / (motif_TP + motif_FN)
+                pre = motif_TP / (motif_TP + motif_FP)
+                f1 = 2/(1/rec + 1/pre)
+                TP, TN, FP, FN = motif_TP.astype(float), motif_TN.astype(float), motif_FP.astype(float), motif_FN.astype(float)
+                MCC = (TP*TN - FP*FN) / np.sqrt((TP+FP) * (TP+FN) * (TN+FP) * (TN+FN))
+                print(f'Analysis for the {motif_name} motif: Cutoffs = {list(cutoffs)}, TP = {motif_TP}, TP + FP (what is marked as positive) = {motif_TP + motif_FP}' + ' '*10)
+                print(f'Rec = {np.round(rec*100, 2)}')
+                print(f'Pre = {np.round(pre*100, 2)}')
+                print(f'F1  = {np.round(f1*100, 2)}')
+                print(f'MCC = {np.round(MCC*100, 2)}')
         print(f'Total sites: {len(seq_data):,}' + ' '*30)
         print(f'Positive sites: {sum(y_boolean):,} ({np.mean(y_boolean)*100:.2f}%)')
 
@@ -250,8 +262,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'Preprocess the original or modified dataset for O-GlcNAcylation prediction')
     parser.add_argument('filename', type = str, nargs = 1,
         help = 'The name of the raw dataset. Must be "file_for_ML.csv", "file_for_ML_v2.csv", "all_sites_fixed.csv", "all_sites_PS.csv", "all_sites_PS_Uniprot.csv", or "OVSlab_allSpecies_O-GlcNAcome_PS.csv"')
-    parser.add_argument('-ws', '--window_size', type = int, nargs = 1, metavar = 10, default = [10],
-        help = 'The size of each side of the window. The total window size is 2*window_size + 1. Optional, default = 10.')
+    parser.add_argument('-ws', '--window_size', type = int, nargs = 1, metavar = 5, default = [5],
+        help = 'The size of each side of the window. The total window size is 2*window_size + 1. Optional, default = 5.')
     args = parser.parse_args()
     preprocess_data(args.filename[0], args.window_size[0]) # [0] to convert from list to string
 
