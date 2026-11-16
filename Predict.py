@@ -2,28 +2,27 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
-from os.path import join as osjoin
 from os.path import exists as osexists
 from os import listdir
-from sklearn.model_selection import train_test_split
 from collections import OrderedDict
 from sklearn.preprocessing import LabelBinarizer
+from scipy.special import softmax
 
-def predict_OGlcNAcylation(sequence, threshold = 0.5, batch_size = 2048, shapley = False):
+def predict_OGlcNAcylation(sequence, threshold = 0.6, batch_size = 2048, column_sequences = 0, true_labels = None, shapley = False):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     # Sequence data preparation
     if osexists(sequence): # User passed a .csv with sequences
         sequence_path = sequence
-        sequence = pd.read_csv(sequence).values.squeeze()
+        sequence = pd.read_csv(sequence, usecols = column_sequences).values.squeeze()
     # One-hot encoding the sequences
     OHE_seq = torch.Tensor(OHE_for_LSTM(np.atleast_1d(np.array(sequence)), 20))
     seq_dataloader = DataLoader(OHE_seq, batch_size, shuffle = False)
 
     # Model preparation
     if 'RNN-[600,75]_20-window_dict.pt' in listdir():
-        mydict = torch.load(osjoin('RNN-[600,75]_20-window_dict.pt'), map_location = torch.device(device)) # New model with higher performance from "Predicting O-GlcNAcylation sites in mammalian proteins with transformers and RNNs trained with a new loss function" work
+        mydict = torch.load('RNN-[600,75]_20-window_dict.pt', map_location = torch.device(device)) # New model with higher performance from "Predicting O-GlcNAcylation sites in mammalian proteins with transformers and RNNs trained with a new loss function" work
     else:
-        mydict = torch.load(osjoin('RNN-225_20-window_dict.pt'), map_location = torch.device(device)) # Old model from "Recurrent Neural Network-based Prediction of O-GlcNAcylation Sites in Mammalian Proteins" work; kept for compatibility
+        mydict = torch.load('RNN-225_20-window_dict.pt', map_location = torch.device(device)) # Old model from "Recurrent Neural Network-based Prediction of O-GlcNAcylation Sites in Mammalian Proteins" work; kept for compatibility
     layers = []
     for array_name, array in mydict.items(): # Getting the size of the model from mydict
         if 'weight' in array_name:
@@ -45,6 +44,7 @@ def predict_OGlcNAcylation(sequence, threshold = 0.5, batch_size = 2048, shapley
     pred_bool = pred[:, 1] >= threshold
     if shapley: # Also do predictions using Shapley values
         import shap
+        from sklearn.model_selection import train_test_split
         background = _make_background_shap().to(device)
         explainer = shap.DeepExplainer(model, background)
         shap_values = np.array(explainer.shap_values(OHE_seq.to(device), check_additivity = False))
@@ -72,6 +72,31 @@ def predict_OGlcNAcylation(sequence, threshold = 0.5, batch_size = 2048, shapley
         print(f'Sequence {sequence} | Predicted O-GlcNAcylation Chance = {pred[0, 1].item():.4e} | Chance >= {threshold}: {pred_bool.item()} | Shapley value Chance = {shap_chance}')
         if 'shap_unsummed' in locals():
             print(f'Unsummed shap coefficients: {shap_unsummed.iloc[0].values}')
+    # Comparing the model's predictions with the true labels input by the user
+    if true_labels:
+        from sklearn.metrics import confusion_matrix
+        true_labels = pd.read_csv(true_labels).values.squeeze()
+        CM = confusion_matrix(true_labels, pred_bool)
+        if CM[1, 1]:
+            rec = CM[1, 1] / (CM[1, 0] + CM[1, 1])
+            pre = CM[1, 1] / (CM[0, 1] + CM[1, 1])
+        else:
+            rec = 0
+            pre = 0
+        if rec and pre:
+            f1 = 2/(1/rec + 1/pre)
+        else:
+            f1 = 0
+        CM = CM.astype(float) # Converting to float to avoid overflow errors when calculating the MCC
+        # The formula for the multiclass MCC comes from J. Gorodkin, "Comparing two K-category assignments by a K-category correlation coefficient", https://doi.org/10.1016/j.compbiolchem.2004.09.006
+        MCC = (np.diag(CM).sum()*CM.sum() - (CM.sum(axis=0)*CM.sum(axis=1)).sum()) / ( np.sqrt(CM.sum()**2 - (CM.sum(axis=0)**2).sum()) * np.sqrt(CM.sum()**2 - (CM.sum(axis=1)**2).sum()) + 1e-10) # 1e-10 to avoid division by 0 issues when the model predicts that all samples are positive or all are negative. The MCC is correctly reported as 0 in this case
+        print('Confusion matrix:' + ' '*30)
+        print(CM.astype(int), end = '\n\n')
+        print(f'Recall   : {rec*100:.2f}%')
+        print(f'Precision: {pre*100:.2f}%')
+        print(f'F1 Score : {f1*100:.2f}%')
+        print(f'MCC      : {MCC*100:.2f}%')
+
 
 def _make_background_shap(bg_size = 4000):
     """
@@ -130,7 +155,6 @@ class SequenceMLP(torch.nn.Module):
                 mylist.append((f'{activ_fun}{idx}', torch_activ_fun))
         # OrderedDict into NN
         self.model = torch.nn.Sequential(OrderedDict(mylist))
-        self.sigmoid = torch.nn.Sigmoid()
 
     def forward(self, x):
         if 'lstm' in dir(self):
@@ -141,9 +165,7 @@ class SequenceMLP(torch.nn.Module):
             out = self.model(to_MLP)
         else:
             out = self.model(x)
-        probs = self.sigmoid(out)
-        probs = (probs.T / probs.sum(axis=1)).T # Normalizing the probs to 1
-        return probs
+        return out.softmax(axis = 1)
 
 def OHE_for_LSTM(sequences, window = 10):
     lb = LabelBinarizer()
@@ -168,14 +190,18 @@ if __name__ == '__main__':
     # Input setup
     import argparse
     parser = argparse.ArgumentParser(description = 'Loads a trained RNN model and predicts the presence of O-GlcNAcylation sites based on protein sequence.')
-    parser.add_argument('sequence', type = str, nargs = 1, help = 'The protein sequence of the site (15 AAs on each side + the central S/T) OR a .csv file with a header and the site sequences.')
-    parser.add_argument('-t', '--threshold', metavar = '0.5', nargs = 1, type = float, default = [0.5], help = 'The minimum prediction threshold for a site to be considered O-GlcNAcylated. Optional, default = 0.5.')
+    parser.add_argument('sequence', type = str, nargs = 1, help = 'The protein sequence of the site (15 AAs on each side + the central S/T) OR path to a .csv file with a header and the site sequences.')
+    parser.add_argument('-t', '--threshold', metavar = '0.6', nargs = 1, type = float, default = [0.6], help = 'The minimum prediction threshold for a site to be considered O-GlcNAcylated. Optional, default = 0.6.')
     parser.add_argument('-bs', '--batch_size', metavar = '2048', nargs = 1, type = int, default = [2048], help = 'The number of predictions done at a time. Lower only if getting out of memory errors. Optional, default = 2048.')
+    parser.add_argument('-c', '--column_sequences', metavar = '0', nargs = 1, type = int, default = [0], help = 'The column of the .csv file containing the sequences, 0-indexed. Optional, default = 0 (the first column).')
+    parser.add_argument('-l', '--labels', type = str, nargs = 1, default = [None], help = 'Path to a .csv file with a header and the true O-GlcNAcylation status of the sequences, in the same order as the sequences. Used to evaluate the model\'s predictions against another dataset.')
     parser.add_argument('-shap', '--shapley_values', metavar='True | [False]', type = bool, nargs = '?', default = False, const = True, help = 'Whether to also make predictions using Shapley values, which are interpretable.' +
                         'This is slower than the default of not using Shapley. Optional, default = False')
     args = parser.parse_args()
     sequence = args.sequence[0] # [0] to convert from list to string
     threshold = args.threshold[0]
     batch_size = args.batch_size[0]
+    column_sequences = args.column_sequences # This should be a container, so no [0]
+    labels = args.labels[0]
     shap = args.shapley_values
-    predict_OGlcNAcylation(sequence, threshold, batch_size, shap)
+    predict_OGlcNAcylation(sequence, threshold, batch_size, column_sequences, labels, shap)
