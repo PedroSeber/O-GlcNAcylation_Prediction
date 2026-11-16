@@ -1,2 +1,1 @@
-UP000005640_9606_dataset.csv filter=lfs diff=lfs merge=lfs -text
 UP000005640_9606_dataset_predictions.csv filter=lfs diff=lfs merge=lfs -text
