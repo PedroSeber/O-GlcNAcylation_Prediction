@@ -286,6 +286,41 @@ def main(plot_type):
             my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
             my_label.set_bbox(bbox_dict)
 
+    elif 'esmc' in plot_type.casefold():
+        plot_type = 'ESMC'
+
+        # Plotting - ESMC-6B --> MLP; CE
+        x_values = [89.94, 81.25, 68.39, 55.26, 48.23, 45.46, 42.03, 39.55, 37.53, 35.9 , 33.71, 31.36, 28.51, 24.59, 20.73, 11.64,  4.33]
+        y_values = [ 2.96,  3.77,  5.84, 11.7 , 20.88, 25.96, 31.68, 34.67, 36.9 , 38.92, 41.12, 42.81, 44.77, 48.06, 51.29, 55.59, 49.79]
+        labels =   ['1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999']
+        #labels =   ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99']
+        ANN_line = plt.plot(x_values, y_values, '-', label = r'ESMC-6B $\rightarrow$ MLP; CE')
+        for idx in range(len(labels)):
+            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
+            my_label.set_bbox(bbox_dict)
+
+        # Plotting - ESMC-6B --> MLP; diffMCC
+        x_values = [96.83, 91.2 , 77.87, 61.18, 51.23, 46.97, 41.82, 38.75, 36.27, 33.17, 29.78, 26.46, 22.96, 17.92, 14.06,  7.71, 3.28]
+        y_values = [ 2.62,  3.12,  4.45,  8.54, 16.56, 22.35, 29.58, 34.17, 38.62, 41.55, 44.41, 47.66, 51.  , 55.66, 59.82, 68.15, 77.78]
+        labels =   ['1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999']
+        #labels =   ['1e-8', '1e-7', '1e-6', '1e-5', '1e-4', '1e-3', '0.01', '0.05', '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99']
+        ANN_line = plt.plot(x_values, y_values, '-', label = r'ESMC-6B $\rightarrow$ MLP; diff MCC')
+        for idx in range(len(labels)):
+            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
+            my_label.set_bbox(bbox_dict)
+
+        # Plotting - Our RNN-[600, 75]; window size = 20; differentiable MCC
+        x_values = [92.95, 87.58, 55.51, 38.12, 34.57, 33.11, 31.64, 30.49, 29.46,  28.99,  27.85,   26.23, 19.26]
+        y_values = [ 3.42,  3.82,  8.39, 29.78, 43.11, 47.1 , 49.52, 50.68, 51.89,  53.15,  54.52,   55.66, 61.63]
+        labels =   ['0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9', '0.95', '0.99', '0.999',   '1']
+        ANN_line = plt.plot(x_values, y_values, '-', label = 'RNN-[600, 75]; 20 win; diff MCC [for reference]')
+        for idx in range(len(labels)):
+            my_label = ax.annotate(labels[idx], (x_values[idx], y_values[idx]), fontsize = annotation_fontsize, va = 'center', ha = 'center', color = ANN_line[0].get_color())
+            my_label.set_bbox(bbox_dict)
+
+        # No model / testing everything
+        plt.plot(100, 2.44, 's', label = 'No model')
+
     # F curves
     rec = np.linspace(0.030, 1, 195)
     beta = 1

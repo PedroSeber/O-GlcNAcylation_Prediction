@@ -328,7 +328,7 @@ def main(data_version):
         if data_version not in {'BLANK', 'v0'}:
             ax.legend(fontsize = 22)
         plt.tight_layout()
-        plt.savefig(f'O-Gly_model_eval_F{beta}_{data_version}-data.svg')
+        plt.savefig(f'O-Gly_model_eval_F{beta}_{data_version}-data.svg', bbox_inches = 'tight')
 
 if __name__ == '__main__':
     # Input setup
