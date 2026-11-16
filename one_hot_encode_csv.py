@@ -120,8 +120,13 @@ def preprocess_data(filename, window_size = 10):
         y_boolean = pd.Series(y_boolean, name = 'is_O-GlcNAcylated')
         y_boolean.to_csv(f'OH_data_{data_version}.csv', index = False)
     elif filename == 'OVSlab_allSpecies_O-GlcNAcome_PS.csv':
+        # For the original OVSlab_allSpecies_O-GlcNAcome.csv file from Wulff-Fuentes et al.
         #mammalian_species = {'Camelus dromedarius', 'Rattus norvegicus', 'Mus musculus', 'Chlorocebus aethiops', 'Oryctolagus cuniculus', 'Macaca fascicularis', 'Ovis aries', 'Rattus sp', 'Chlorocebus sabaeus',
         #                     'Canis lupus familiaris', 'Bos taurus', 'Homo sapiens', 'Capra hircus', 'Macaca mulatta', 'Sus scrofa'} # Manually generated from the original dataset
+        # For the new OVSlab_allSpecies_O-GlcNAcome.csv file from the O-GlcNAc Database v3.0
+        #mammalian_species = {'Felis catus', 'Homo sapiens', 'Mesocricetus auratus', 'Oryctolagus cuniculus', 'Potorous tridactylus', 'Equus caballus', 'Ailuropoda melanoleuca', 'Bos taurus', 'Cavia porcellus',
+        #                     'Ovis aries', 'Rattus norvegicus', 'Macaca mulatta', 'Pan troglodytes', 'Bubalus bubalis', 'Camelus dromedarius', 'Capra hircus', 'Rattus sp', 'Macaca fascicularis', 'Gorilla gorilla gorilla',
+        #                     'Bos mutus grunniens', 'Chlorocebus sabaeus', 'Mus musculus', 'Chlorocebus aethiops', 'Mus spicilegus', 'Canis lupus familiaris', 'Sus scrofa', 'Ovis aries musimon'}
         positive_sites = set()
         for idx in range(data.shape[0]):
             temp_sites = data.iat[idx, 2].split(';') # A single protein may have multiple positive sites, which are separated with a ;
